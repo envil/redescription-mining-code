@@ -110,11 +110,11 @@ class ExtensionPool(object):
             if filenames is None:
                 filenames = self.getExtensionsFilesDict()
 
-        params_l = {}
+        params_collect = {}
         for ek in eks:
             ext = self.initExtension(ek, filenames, params, details)
-            params_l.update(ext.getParams())
-        return params_l
+            params_collect.update(ext.getParams())
+        return params_collect
 
     def saveExtensions(self, filenames=None, details={}):
         if filenames is None:
@@ -714,7 +714,7 @@ class Data(ContentCollection):
         return {"folds": folds, "counts_folds": counts_folds, "nb_folds": nb_folds}
 
     def findCandsFolds(self, strict=False):
-        folds = self.getColsByName("^(v[\d*]_)?"+csv_reader.FOLDS_PREF)
+        folds = self.getColsByName(csv_reader.FOLDS_PATT)
         if strict:
             return folds
         more = self.getColsMoreFolds(folds)
@@ -777,16 +777,18 @@ class Data(ContentCollection):
         if subsets is None and self.fold is not None:
             if self.fold["source"] == "auto":
                 subsets = dict([(k, self.fold["folds"][kk]) for (k, kk) in self.fold["fold_ids"].items()])
-                suff = "%d%sg%s" % (self.nbCols(sito), (self.fold["parameters"]["coo_dim"] or "N"), (self.fold["parameters"]["grain"] or "N"))
+                suff = "%dc%sg%s" % (self.nbCols(sito), (self.fold["parameters"]["coo_dim"] or "N"), (self.fold["parameters"]["grain"] or "N"))
         if type(subsets) is list:
             subsets = dict(enumerate(subsets))
         if subsets is not None and type(subsets) is dict:
             self.addVecCol(dict([("F:%s" % i, s) for (i, s) in subsets.items()]), csv_reader.FOLDS_PREF+suff, sito)
+            return suff
     #######################
 
     def addVecCol(self, vec, name=None, sito=1, force_type=None):
         vname = "v%d" % self.nbCols(sito)
         if name is not None:
+            # MAKE SURE THIS IS COHERENT WITH FOLDS_PATT
             vname = vname+":"+name
         col = None
         if force_type == "clusters" or force_type == "support":

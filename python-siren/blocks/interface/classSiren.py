@@ -352,10 +352,13 @@ class Siren(GUIBoss):
     vffiles = [('fields_vdefs_basic.txt', 'mine')]
     rff_mtch = 'fields_rdefs_*.txt'
     vff_mtch = 'fields_vdefs_*.txt'
-    cfiles = [('miner_confdef.xml', 'mine'), ('dataext_confdef.xml', 'mine'), ('network_confdef.xml', 'work'), ('ui_confdef.xml', 'interface')]
+    cfiles = {"base": [('miner_confdef.xml', 'mine'), ('ui_confdef.xml', 'interface')],
+              "inout": [('inout_confdef.xml', 'mine')],
+              "folds": [('folds_confdef.xml', 'mine')],
+              "dataext": [('dataext_confdef.xml', 'mine')],
+              "network": [('network_confdef.xml', 'work')]}
     if WITHVIEWS:
-        cfiles.append(('views_confdef.xml', 'views'))
-    cfiles_io = [('inout_confdef.xml', 'mine')]
+        cfiles["base"].append(('views_confdef.xml', 'views'))
 
     def addTmpStore(self, k, v):
         self.tmp_store[k] = v
@@ -378,8 +381,11 @@ class Siren(GUIBoss):
         else:
             self.viewsm = None
 
-        self.conf_defs = Siren.initConfs(self.cfiles)
-        self.conf_defs_io = Siren.initConfs(self.cfiles_io)
+        self.conf_defs = dict([(k, Siren.initConfs(v)) for (k, v) in self.cfiles.items()])
+        all_conf_defs = []
+        for k, vs in self.conf_defs.items():
+            all_conf_defs.extend(vs)
+        self.conf_defs["all"] = all_conf_defs
         self.icon_file = Siren.searchData('siren_icon32x32.png', 'icons')
         self.license_file = Siren.searchData('LICENSE', 'licenses')
         self.helpURL = Siren.searchData('index.html', 'help')
@@ -426,7 +432,7 @@ class Siren(GUIBoss):
 
         self.call_check = None
 
-        self.dw = DataWrapper(self.logger, conf_defs=self.conf_defs)
+        self.dw = DataWrapper(self.logger, conf_defs=self.conf_defs["all"])
 
         self.create_tool_panel()
         self.changePage(stn)
@@ -1305,25 +1311,25 @@ class Siren(GUIBoss):
     ######################################################################
     # MISCS DIALOG
     def OnPreferencesDialog(self, event):
-        d = PreferencesDialog(self.toolFrame, self.dw)
+        d = PreferencesDialog(self.toolFrame, self.dw, conf_filter=self.conf_defs["base"])
         d.ShowModal()
         d.Destroy()
         self.refresh()
 
     def OnExtensionsDialog(self, event):
-        d = ExtensionsDialog(self.toolFrame, self.dw)
+        d = ExtensionsDialog(self.toolFrame, self.dw, conf_filter=self.conf_defs["dataext"])
         d.ShowModal()
         d.Destroy()
         self.refresh()
 
     def OnConnectionDialog(self, event):
-        d = ConnectionDialog(self.toolFrame, self.dw, self.plant, self)
+        d = ConnectionDialog(self.toolFrame, self.dw, conf_filter=self.conf_defs["network"], wp_handle=self.plant, boss=self)
         tt = d.ShowModal()
         d.Destroy()
         self.refresh()
 
     def OnFoldsDialog(self, event):
-        d = FoldsDialog(self.toolFrame, self.dw, self)
+        d = FoldsDialog(self.toolFrame, self.dw, conf_filter=self.conf_defs["folds"], tool=self)
         d.ShowModal()
         d.Destroy()
         self.refresh()
@@ -1994,7 +2000,7 @@ class Siren(GUIBoss):
         open_dlg.Destroy()
         self.refresh()
 
-    def OnExportPreferences(self, mess="preferences", inc_def=False, conf_def=None):
+    def OnExportPreferences(self, mess="preferences", inc_def=False, conf_filter=None):
         if self.dw.getPackageSaveFilename() is not None:
             dir_name = os.path.dirname(self.dw.getPackageSaveFilename())
         else:
@@ -2004,7 +2010,7 @@ class Siren(GUIBoss):
         if save_dlg.ShowModal() == wx.ID_OK:
             path = save_dlg.GetPath()
             try:
-                self.dw.exportPreferences(path, inc_def, conf_def)
+                self.dw.exportPreferences(path, inc_def, conf_filter)
             except Exception:
                 pass
         save_dlg.Destroy()
@@ -2014,10 +2020,10 @@ class Siren(GUIBoss):
         self.OnExportPreferences(mess="preferences")
 
     def OnPrintoutPreferencesTmpl(self, event):
-        self.OnExportPreferences(mess="preferences template", conf_def=self.conf_defs+self.conf_defs_io)
+        self.OnExportPreferences(mess="preferences template", conf_filter=self.conf_defs["all"])
 
     def OnPrintoutPreferencesDef(self, event):
-        self.OnExportPreferences(mess="default preferences", inc_def=True, conf_def=self.conf_defs+self.conf_defs_io)
+        self.OnExportPreferences(mess="default preferences", inc_def=True, conf_filter=self.conf_defs["all"])
 
     # PACKAGE
     def OnOpenPck(self, event):

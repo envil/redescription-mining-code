@@ -1337,9 +1337,8 @@ class SParts(SSizes):
 
     class_letter = "s"
     # PROPS WHAT
-    # info_what = {"acc": "self.acc()", "pval": "self.pVal()"}
-    props_what = ["len", "card", "perc", "ratio", "area", "supp", "set"]
-
+    props_what = ["set"]+SSizes.props_what
+    Pwhat_match = "(" + "|".join(list(SSizes.info_what.keys()) + props_what) + ")"
     @classmethod
     def prepare_supports_parts(tcl, supports, N):  # retrieves the support parts from list of sets, which must be of length 2, 3, 4 or 9
         if type(supports) == list and len(supports) == 4 and len(supports[2]) + len(supports[3]) == 0:

@@ -450,17 +450,17 @@ class Miner(object):
             self.id = 1
         self.data = data
 
-        self.max_processes = params["nb_processes"]["data"]
-        self.pe_balance = params["pe_balance"]["data"]
+        self.max_processes = params["nb_processes"]
+        self.pe_balance = params["pe_balance"]
 
         # SETTING UP DATA
         row_ids = None
         if "area" in cust_params:
             inw, outw = cust_params.get("in_weight", 1), cust_params.get("out_weight", 1)
             if "in_weight" in params:
-                inw = params["in_weight"]["data"]
+                inw = params["in_weight"]
             if "out_weight" in params:
-                outw = params["out_weight"]["data"]
+                outw = params["out_weight"]
             weights = dict([(r, outw) for r in range(self.data.nbRows())])
             for old in cust_params["area"]:
                 weights[old] = inw
@@ -1129,7 +1129,7 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
 
 
 def instMiner(data, params, logger=None, mid=None, qin=None, cust_params={}, filenames={}):
-    if params["nb_processes"]["data"] > 1:
+    if params["nb_processes"] > 1:
         Redescription.setUidGen(nv=None, step=None, mp_lock=True)
         return MultiprocMiner(data, params, logger, mid, qin, cust_params, filenames)
     else:

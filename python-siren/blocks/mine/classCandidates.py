@@ -1280,27 +1280,3 @@ def initCands(pt, data, constraints, save_filename=None):
     else:
         return InitialPairs(data.nbRows(), constraints.getSSetts(), constraints, None,
                             constraints.getCstr("pair_sel"), constraints.getCstr("max_inits"), save_filename=save_filename)
-
-
-# if __name__ == "__main__":
-#     import pickle
-
-#     # from classPreferencesManager import getParams
-#     # import glob
-#     # import os.path
-#     # import sys
-#     # pref_dir = os.path.dirname(os.path.abspath(__file__))
-#     # conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
-#     # params = getParams(sys.argv, conf_defs)
-
-#     eb = ExtsBatch(20)
-#     # pdb.set_trace()
-
-#     with open('datafile.txt', 'wb') as fh:
-#         pickle.dump(eb, fh)
-
-#     pickle_off = open("datafile.txt", "rb")
-#     ebx = pickle.load(pickle_off)
-#     pickle_off.close()
-
-#     pdb.set_trace()

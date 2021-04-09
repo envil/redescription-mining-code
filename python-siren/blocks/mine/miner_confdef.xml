@@ -100,7 +100,7 @@
         <label>Max initial candidates</label>
         <parameter_type>open</parameter_type>
         <value_type>integer</value_type>
-        <legend>Maximum number of initial candidates explored, pairs for ReReMi, initial targets for trees. -1 leads to expand all.</legend>
+        <legend>CORE Maximum number of initial candidates explored, pairs for ReReMi, initial targets for trees. -1 leads to expand all.</legend>
         <length>4</length>
         <default>
           <value>100</value>

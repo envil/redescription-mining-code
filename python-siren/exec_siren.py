@@ -7,9 +7,10 @@ import time
 # import warnings
 # warnings.simplefilter("ignore")
 
+from blocks.mine.classData import Data
 from blocks.interface.classSiren import Siren
 from blocks.interface.classGridTable import CustRenderer
-from blocks.mine.classPreferencesManager import PreferencesReader, getPM
+from blocks.mine.classPreferencesManager import getPreferencesReader
 from blocks.mine.classPackage import IOTools
 
 import pdb
@@ -32,61 +33,47 @@ class SirenApp(wx.App):
         import os
         import platform
         import re
+
+        params = {}
         if len(sys.argv) > 1 and platform.system() != 'Darwin':
             # On OSX, MacOpenFile() gets called with sys.argv's contents, so don't load anything here
             # print("Loading file", sys.argv[-1])
-            pos_fn = 1
-            while pos_fn > 0 and pos_fn < len(sys.argv):
-                filename = sys.argv[pos_fn]
-                (p, ext) = os.path.splitext(filename)
-                if ext == '.siren':
-                    try:
-                        self.frame.dw.openPackage(filename)
-                    except Exception:
-                        pass
-                    pos_fn += 1
-                elif re.search("queries", filename) and ext in ['.csv', '.txt', '.queries']:
-                    self.frame.dw.loadRedescriptionsFromFile(filename)
-                    pos_fn += 1
-                elif ext in [".conf", ".xml"]:
-                    self.frame.dw.importPreferencesFromFile(filename)
-                    pm = getPM()
-                    # in/out params are not read and accounted for in Siren, load separately
-                    default_params = PreferencesReader(pm).getParametersDict()
-                    params = PreferencesReader(pm).getParametersDict(filename)
-                    src_folder = os.path.dirname(os.path.abspath(filename))
-                    default_filenames = IOTools.prepareFilenames(default_params, src_folder=src_folder)
-                    filenames = IOTools.prepareFilenames(params, src_folder=src_folder)
-                    # First check whether there are non-default filenames in params, then reread params with defaults
-                    if filenames["style_data"] == "csv" and filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and \
-                       filenames["RHS_data"] != default_filenames["RHS_data"] and \
-                       filenames["LHS_data"] != default_filenames["LHS_data"]:
-                        self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
-                        self.frame.dw.applyVarsMask(params)
-                        if filenames["queries"] != "-" and os.path.isfile(filenames["queries"]):
-                            self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
+            preferences_reader = self.frame.dw.getPreferencesReader()
+            params, leftover_args, preferences_mod = preferences_reader.getPreferences(sys.argv)
+            if "src_folder" in params.get("filename", {}):
+                src_folder = params["filename"]["src_folder"]
+            else:
+                src_folder = os.path.dirname(os.path.abspath(__file__))
 
-                    pos_fn += 1
-                elif ext == '.csv':
-                    # If the first file is .csv, check if we've got two files and use them as left and right files
-                    series = filename.split("_")[-1].split(".")[0]
-                    LHfile = filename
-                    RHfile = filename
-                    if len(sys.argv) > pos_fn+1:
-                        (f, ext2) = os.path.splitext(sys.argv[pos_fn+1])
-                        if ext2 == '.csv':
-                            pos_fn += 1
-                            RHfile = sys.argv[pos_fn]
+            if "pack_file" in params.get("filename", {}):
+                pack_filename = params["filename"]["pack_file"][0]
+                try:
+                    self.frame.dw.openPackage(pack_filename)
+                except Exception:
+                    del params["filename"]["pack_file"]
+            self.frame.dw.updatePreferences(params)
 
-                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+IOTools.getDataAddInfo())
-                    pos_fn += 1
-                else:
-                    pos_fn *= -1
-                    #sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
+            filenames = IOTools.prepareFilenames(params, src_folder=src_folder)
+            if not "pack_file" in params.get("filename", {}) and os.path.exists(filenames["LHS_data"]) and os.path.exists(filenames["RHS_data"]):
+                data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
+                data.loadExtensions(ext_keys=params.get("activated_extensions", []), filenames=filenames.get("extensions"), params=params)
+                self.frame.dw.setData(data)
+                self.frame.dw.applyVarsMask(params)
+                self.frame.dw._isChanged = True
+                self.frame.dw._isFromPackage = False
+
+            if self.frame.dw.getData() is not None:
+                for filename in filenames["all_queries"]:
+                    if filename != "-" and os.path.isfile(filename):
+                        self.frame.dw.loadRedescriptionsFromFile(filename)
+
         self.frame.refresh()
 
-        if len(sys.argv) > 2 and sys.argv[-1] == "debug":
+        if params.get("debug", False):
+            # self.frame.OnPreferencesDialog(None)
             # self.frame.OnExtensionsDialog(None)
+            self.frame.OnFoldsDialog(None)
+            # self.frame.OnConnectionDialog(None)
             # print "No debug action..."
             # print("Loading file", sys.argv[-1])
             # self.frame.expand()
@@ -136,9 +123,9 @@ class SirenApp(wx.App):
 
             # iids = self.frame.getData().getIidsList((0,0))
             # what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
-            iids = self.frame.getRedLists().getIidsList(3)
-            what = [(iid, self.frame.getRedLists().getItem(iid)) for iid in iids]
-            self.frame.viewOpen(what, iid=-1, viewT="LRNG")
+            # # iids = self.frame.getRedLists().getIidsList(3)
+            # # what = [(iid, self.frame.getRedLists().getItem(iid)) for iid in iids]
+            # # self.frame.viewOpen(what, iid=-1, viewT="LRNG")
 
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()

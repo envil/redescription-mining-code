@@ -6,7 +6,7 @@ import re
 
 from blocks.mine.classPackage import IOTools
 from blocks.mine.classProps import findFile
-from blocks.mine.exec_clired import TASKS, METHS, do_task, get_reds_etc
+from blocks.mine.exec_clired import TASKS_METH, TASKS_DEFAULT, TASKS_LOAD, CONF_DEFS, CONF_FILTER, do_task
 from blocks.work.classWorkInactive import CLIBoss
 from blocks.work.classWorkLocal import WorkLocal
 from blocks.work.classWorkClient import WorkClient
@@ -24,13 +24,12 @@ import pdb
 #     exec(meth_tmpl)
 
 
-def client_forward(kw, loaded, *task_args):
+def client_forward(task, loaded):
     params = loaded["params"]
-    ip = params["workserver_ip"]["data"]
-    client_id = params["workserver_clientid"]["data"]
-    suff = task_args[0] if len(task_args) > 0 else ""
+    ip = params["workserver_ip"]
+    client_id = params["workserver_clientid"]
     if ip is not None and not re.match("[lL]ocal$", ip):
-        wp = WorkClient(ip, params["workserver_port"]["data"], params["workserver_authkey"]["data"])
+        wp = WorkClient(ip, params["workserver_port"], params["workserver_authkey"])
         # wp = WorkLocal()
 
         status, info, client_ids = wp.getDetailedInfos()
@@ -38,33 +37,33 @@ def client_forward(kw, loaded, *task_args):
         print("Server %s\t%s%s" % (status, info.strip(), cl_ids))
 
         # nothing more to do for ping...
-        if kw == "ping":
+        if task == "ping":
             sys.exit(0)
         if status == "KO":
             print("No server, stopping...")
             sys.exit(2)
-        if kw == "reconnect" and client_id not in client_ids:
+        if task == "reconnect" and client_id not in client_ids:
             print("Nothing to reconnect to...")
             sys.exit(0)
 
         data, logger, filenames = (loaded["data"], loaded["logger"], loaded["filenames"])
         trg_reds = filenames["queries"]
-        boss = CLIBoss(wp, data, params, logger, params["results_delay"]["data"])
+        boss = CLIBoss(wp, data, params, logger, params["results_delay"])
         # if results delay is not strictly postive, this means simply issue the command and exit, wil come back to collect results later on
-        collectLater = (params["results_delay"]["data"] <= 0) and wp.isDistributed()
+        collectLater = (params["results_delay"] <= 0) and wp.isDistributed()
         out_lid = "F"
 
-        if kw == "reconnect":
+        if task == "reconnect":
             wp.resetClientId(client_id)
             wp.reconnection(boss)
         else:
             task_params = {"task": "mine"}
-            if kw != "mine":
+            if task != "mine":
                 out_lid = "P"
-                reds, srcs_reds, trg_reds = get_reds_etc(loaded, suff=suff, alt_suff="_X")
-                if kw == "expand":
+                reds, srcs_reds, all_queries_src, trg_reds = IOTools.getRedsEtc(loaded, alt_suff="_X")
+                if task == "expand":
                     task_params = {"task": "expand", "reds": reds}
-                elif kw == "improve":
+                elif task == "improve":
                     task_params = {"task": "improve", "reds": reds}
             wp.addWorker(boss, task_params)
         try:
@@ -84,45 +83,35 @@ def client_forward(kw, loaded, *task_args):
 
     else:
         # no server specified, falling back on standard clired, or ending
-        if kw in METHS:
-            METHS[kw](kw, loaded, *task_args)
+        if task in TASKS_METH:
+            TASKS_METH[task](task, loaded)
 
 
-CMETHS = {"mine": client_forward, "expand": client_forward, "improve": client_forward,
-          "ping": client_forward, "reconnect": client_forward}
+CTASKS_METH = {"mine": client_forward, "expand": client_forward, "improve": client_forward,
+               "ping": client_forward, "reconnect": client_forward}
+CTASKS_DEFAULT = "ping"
+CTASKS_LOAD = {"ping": {"params_only": True}}
 
 
-def do_client(sargs):
+def run_client(sargs):
 
     srcdir = os.path.dirname(os.path.abspath(__file__))
-    work_conf_defs = []
+    work_conf_defs = list(CONF_DEFS)
+    work_conf_filter = list(CONF_FILTER)
     for cdef in ["network_confdef.xml"]:
         fn = findFile(cdef, [srcdir+"/blocks/work"])
         if fn is not None:
             work_conf_defs.append(fn)
+            work_conf_filter.append(fn)
 
-    client_meths = dict(CMETHS)
+    ctasks_meth = dict(TASKS_METH)
+    ctasks_meth.update(CTASKS_METH)
 
-    def_task = {"kw": "ping", "load_extra": {"conf_defs": list(work_conf_defs), "params_only": True}}  # False}
-    client_tasks = [def_task,
-                    {"kw": "reconnect", "load_extra": {"conf_defs": [0]+work_conf_defs}}]
-    for task in TASKS:
-        ntask = dict(task)
-        if ntask["kw"] not in client_meths:  # shortcut tasks that should be sent to server
-            client_meths[ntask["kw"]] = METHS[ntask["kw"]]
-        if "load_extra" in ntask:
-            if ntask["load_extra"] != False:
-                ntask["load_extra"]["conf_defs"] = ntask["load_extra"].get("conf_defs", [0])+work_conf_defs
-        else:
-            ntask["load_extra"] = {"conf_defs": [0]+work_conf_defs}
-        client_tasks.append(ntask)
+    ctasks_load = dict(TASKS_LOAD)
+    ctasks_load.update(CTASKS_LOAD)
 
-    do_task(sargs, client_meths, client_tasks, def_task)
-
-
-def main():
-    do_client(sys.argv)
+    do_task(sargs, conf_defs=work_conf_defs, tasks_meths=ctasks_meth, tasks_default=CTASKS_DEFAULT, tasks_load=ctasks_load, conf_filter=work_conf_filter)
 
 
 if __name__ == '__main__':
-    main()
+    run_client(sys.argv)

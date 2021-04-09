@@ -18,7 +18,7 @@ Data formats
    
 In *Siren*, data include:
    
-* **Variables**: The variables describing the entities are divided in two sets. They can be of three types: 
+* **Variables**: The variables describing the :index:`entities` are divided in two sets. They can be of three types: 
 
   1. Boolean,
   2. categorical,
@@ -26,8 +26,8 @@ In *Siren*, data include:
 
 Obviously, this is required.
 
-* **Entities names**: Optional additional information, providing names for the entities.
-* **Variable names**: Optional additional information, providing names for the variables.
+* **Entities names**: Optional additional information, providing names for the :index:`entities`.
+* **Variable names**: Optional additional information, providing names for the :index:`variables`.
 * **Coordinates**: Optional location information, i.e. geographic coordinates of the entities. This makes the data geospatial.
 
 Data can be imported to *Siren* via the interface menu :menuselection:`File --> Import --> Import Data`. Below, we present the data formats supported by *Siren*.

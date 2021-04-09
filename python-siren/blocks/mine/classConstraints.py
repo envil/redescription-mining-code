@@ -5,12 +5,12 @@ import numpy
 try:
     from classSParts import cmp_lower, cmp_greater, cmp_leq, cmp_geq
     from classPreferencesManager import PreferencesReader
-    from csv_reader import getFp, FOLDS_PREF
+    from csv_reader import getFp, FOLDS_PATT
 
 except ModuleNotFoundError:
     from .classSParts import cmp_lower, cmp_greater, cmp_leq, cmp_geq
     from .classPreferencesManager import PreferencesReader
-    from .csv_reader import getFp
+    from .csv_reader import getFp, FOLDS_PATT
 
 import pdb
 
@@ -18,29 +18,9 @@ import pdb
 class Constraints(object):
 
     @classmethod
-    def getParamData(tcl, params, k, default=None):
-        if k in params:
-            return params[k]["data"]
-        return default
-
-    @classmethod
-    def getParamValue(tcl, params, k, default=None):
-        if k in params:
-            return params[k]["value"]
-        return default
-
-    @classmethod
-    def getParamText(tcl, params, k, default=None):
-        if k in params:
-            return params[k]["text"]
-        return default
-
-    @classmethod
     def applyVarsMask(tcl, data, params):
         if data is not None:
-            return data.applyDisableMasks(tcl.getParamData(params, "mask_vars_LHS"),
-                                          tcl.getParamData(params, "mask_vars_RHS"),
-                                          tcl.getParamData(params, "mask_rows"))
+            return data.applyDisableMasks(params.get("mask_vars_LHS"), params.get("mask_vars_RHS"), params.get("mask_rows"))
 
     special_cstrs = {}
 
@@ -51,7 +31,7 @@ class Constraints(object):
         self.folds = None
         if AR is None:
             AR = params.get("AR")
-        self._pv = PreferencesReader.paramsToDict(params)
+        self._pv = PreferencesReader.copyParams(params)
 
         self._pv.update(self.prepareValues(params))
         if filenames is not None:
@@ -62,7 +42,7 @@ class Constraints(object):
     ## SSETTS_PARAMS = set(["parts_type", "method_pval"])
     def reset(self, params, data=None, AR=-1, dtv=None):
         changed = {}
-        self._pv.update(PreferencesReader.paramsToDict(params))
+        self._pv.update(params)
         self._pv.update(self.prepareValues(params))
 
         if not isinstance(AR, ActionsRegistry):
@@ -77,6 +57,12 @@ class Constraints(object):
         return changed
 
     def prepareValues(self, params, vals=None):
+        def getNegBool(p):
+            return p == "Negative"
+
+        def getOpsBool(p):
+            return p == "Disjunction"
+
         # preparing query types
         if vals is None:
             vvs = {}
@@ -86,24 +72,24 @@ class Constraints(object):
             for type_id in [1, 2, 3]:
                 kp = "neg_query_s%d_%d" % (side_id, type_id)
                 if vals is None or kp in params:
-                    vvs[kp] = [bool(v) for v in self.getParamValue(params, kp, default=[])]
+                    vvs[kp] = [getNegBool(v) for v in params.get(kp, [])]
 
             kp = "ops_query_s%d" % side_id
             if vals is None or kp in params:
-                vvs[kp] = [bool(v) for v in self.getParamValue(params, kp, default=[])]
+                vvs[kp] = [getOpsBool(v) for v in params.get(kp, [])]
 
         # preparing score coeffs
         if vals is None:
             vvs["score_coeffs"] = {}
         for k in ["impacc", "rel_impacc", "pval_red", "pval_query", "pval_fact"]:
             if vals is None or k in params:
-                vvs["score_coeffs"][k] = self.getParamValue(params, "score.%s" % k, default=0)
+                vvs["score_coeffs"][k] = params.get("score.%s" % k, 0)
         return vvs
 
     def prepareValuesDataDependent(self, params):
         # scaling support thresholds
-        min_itm_c, min_itm_in, min_itm_out = self.scaleSuppParams(self.getParamValue(params, "min_itm_c"), self.getParamValue(params, "min_itm_in"), self.getParamValue(params, "min_itm_out"))
-        _, min_fin_in, min_fin_out = self.scaleSuppParams(-1, self.getParamValue(params, "min_fin_in"), self.getParamValue(params, "min_fin_out"))
+        min_itm_c, min_itm_in, min_itm_out = self.scaleSuppParams(params.get("min_itm_c"), params.get("min_itm_in"), params.get("min_itm_out"))
+        _, min_fin_in, min_fin_out = self.scaleSuppParams(-1, params.get("min_fin_in"), params.get("min_fin_out"))
         return {"min_itm_c": min_itm_c, "min_itm_in": min_itm_in, "min_itm_out": min_itm_out,
                 "min_fin_in": min_fin_in, "min_fin_out": min_fin_out}
 
@@ -147,7 +133,7 @@ class Constraints(object):
         return changed
 
     def setFolds(self, data):
-        fcol = data.getColsByName("^"+FOLDS_PREF)
+        fcol = data.getColsByName(FOLDS_PATT)
         if len(fcol) == 1:
             self.folds = data.getFoldsStats(fcol[0][0], fcol[0][1])
 
@@ -258,7 +244,7 @@ class Constraints(object):
             if xpd.get("force_ops") is not None:
                 return xpd.get("force_ops")
             tmp = self.getCstr("ops_query", side=side)
-            if xpd["other_contains_OR"] and self._pv["single_side_or"] == "yes":
+            if xpd["other_contains_OR"] and self._pv["single_side_or"]:
                 tmp = [o for o in tmp if not o]
             return tmp
     special_cstrs["allw_ops"] = "allw_ops"

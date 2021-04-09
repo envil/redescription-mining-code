@@ -16,7 +16,7 @@ try:
     from classData import Data
     from classQuery import Query
     from classConstraints import Constraints, ActionsRegistry
-    from classPreferencesManager import PreferencesReader, getPM, getUsage, processHelpArgs
+    from classPreferencesManager import getPreferencesReader, EXT_SIREN, PATT_QALT
 except ModuleNotFoundError:
     from .toolLog import Log
     from .classCol import ColM
@@ -24,7 +24,7 @@ except ModuleNotFoundError:
     from .classData import Data
     from .classQuery import Query
     from .classConstraints import Constraints, ActionsRegistry
-    from .classPreferencesManager import PreferencesReader, getPM, getUsage, processHelpArgs
+    from .classPreferencesManager import getPreferencesReader, EXT_SIREN, PATT_QALT
 
 
 class Package(object):
@@ -50,7 +50,7 @@ class Package(object):
     RED_FN_SEP = ";"
 
     CREATOR = "Clired/Siren Package"
-    DEFAULT_EXT = ".siren"
+    DEFAULT_EXT = EXT_SIREN
     DEFAULT_TMP = "siren"
 
     def __init__(self, filename, callback_mess=None, mode="r"):
@@ -121,11 +121,11 @@ class Package(object):
 # READING ELEMENTS
 ##########################
 
-    def read(self, pm, options_args=None, params_only=False):
+    def read(self, preferences_reader, options_args=None, pv=None, params_only=False):
         elements_read = {}
         self.openPack()
         try:
-            preferences = self.readPreferences(pm, options_args)
+            preferences = self.readPreferences(preferences_reader, options_args, pv)
             if preferences is not None:
                 elements_read["preferences"] = preferences
 
@@ -165,16 +165,13 @@ class Package(object):
                     for fn in fields_fns:
                         fn.close()
 
-                params_l = PreferencesReader.paramsToDict(preferences)
-                add_info = IOTools.getDataAddInfo(params_l, plist=self.plist, version=self.getFormatV())
+                add_info = IOTools.getDataAddInfo(preferences, plist=self.plist, version=self.getFormatV())
                 data = self.readData(add_info)
                 if data is not None:
                     if "ext_keys" in self.plist:
                         ext_keys = self.plist["ext_keys"].strip().split(";")
-                        params_l = data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
-                        if len(params_l) > 0:
-                            params = PreferencesReader(pm).readParametersDict(params_l)
-                            preferences.update(params)
+                        params_collect = data.loadExtensions(ext_keys=ext_keys, filenames=self.plist, params=preferences, details={"package": self.package})
+                        preferences.update(params_collect)
                         data.recomputeCols()
                     elements_read["data"] = data
                     reds = self.readRedescriptions(data)
@@ -184,14 +181,14 @@ class Package(object):
             self.closePack()
         return elements_read
 
-    def readPreferences(self, pm, options_args=None):
+    def readPreferences(self, preferences_reader, options_args=None, pv=None):
         # Load preferences
         preferences = None
         if "preferences_filename" in self.plist:
             fd = None
             try:
                 fd = self.package.open(self.plist["preferences_filename"], "r")
-                preferences, _ = PreferencesReader(pm).getParameters(fd, options_args)
+                preferences, _, _ = preferences_reader.getPreferences(options_args, conf_file=fd, pv=pv)
             except Exception:
                 self.raiseMess()
                 raise
@@ -254,7 +251,7 @@ class Package(object):
         self.filename = os.path.abspath(filename)
         # Get a temp folder
         tmp_dir = self.getTmpDir()
-        #package_dir = os.path.join(tmp_dir, filename)
+        # package_dir = os.path.join(tmp_dir, filename)
         # os.mkdir(package_dir)
 
         # Write plist
@@ -296,7 +293,7 @@ class Package(object):
         # Write preferences
         if "preferences" in contents:
             try:
-                IOTools.writePreferences(contents["preferences"], contents["pm"],
+                IOTools.writePreferences(contents["preferences"], contents["preferences_reader"],
                                          os.path.join(tmp_dir, plist["preferences_filename"]), toPackage=True)
             except IOError:
                 shutil.rmtree(tmp_dir)
@@ -387,12 +384,12 @@ class IOTools:
                         "vmap": {"(auto)": None, "yes": True, "no": False}}]
 
     @classmethod
-    def getDataAddInfo(tcl, params_l={}, plist={}, version=None, add_info=None):
+    def getDataAddInfo(tcl, params={}, plist={}, version=None, add_info=None):
         if add_info is None:
             add_info = [{}, {"NA_str": Data.NA_str_def}]
 
         for p in tcl.map_data_params:
-            for src in [params_l, plist]:
+            for src in [params, plist]:
                 if p["from"] in src:
                     val = src[p["from"]]
                     if "vmap" in p:
@@ -435,17 +432,9 @@ class IOTools:
         tcl.writeRedescriptions(reds, filename, **params)
 
     @classmethod
-    def writePreferences(tcl, preferences, pm, filename, toPackage=False, inc_def=False, core=False):
-        sections = False
-        helps = False
-        # if toPackage:
-        if preferences is None or inc_def or core:
-            helps = True
-        if preferences is None or inc_def:
-            sections = True
-        # print("PARAMS", sections, helps, inc_def, core)
+    def writePreferences(tcl, preferences, preferences_reader, filename, toPackage=False, inc_def=False, conf_filter=None):
         with open(filename, "w") as f:
-            f.write(PreferencesReader(pm).dispParameters(preferences, sections, helps, inc_def, core))
+            f.write(preferences_reader.dispParameters(preferences, defaults=inc_def, conf_filter=conf_filter))
 
     @classmethod
     def writeData(tcl, data, filenames, toPackage=False):
@@ -457,7 +446,7 @@ class IOTools:
             data.saveExtensions(plist, {"tmp_dir": tmp_dir})
 
     @classmethod
-    def saveAsPackage(tcl, filename, data, preferences=None, pm=None, reds=None, AR=None):
+    def saveAsPackage(tcl, filename, data, preferences=None, preferences_reader=None, reds=None, AR=None):
         package = Package(None, None, mode="w")
 
         (filename, suffix) = os.path.splitext(filename)
@@ -467,10 +456,10 @@ class IOTools:
         if reds is not None and len(reds) > 0:
             contents["redescriptions"] = (self.REDESCRIPTIONS_FILENAME, reds, range(len(reds)))
         if preferences is not None:
-            if pm is None:
-                pm = getPM()
+            if preferences_reader is None:
+                preferences_reader = getPreferencesReader()
             contents["preferences"] = preferences
-            contents["pm"] = pm
+            contents["preferences_reader"] = preferences_reader
 
         # definitions
         vdefs = ColM.getRP().fieldsToStr()
@@ -515,107 +504,161 @@ class IOTools:
         return params
 
     @classmethod
-    def prepareFilenames(tcl, params_l, tmp_dir=None, src_folder=None):
-        filenames = {"queries": "-",
-                     "style_data": "csv",
-                     "add_info": tcl.getDataAddInfo(params_l)
+    def prepareFilenames(tcl, params, tmp_dir=None, src_folder=None):
+        filenames = {"style_data": "csv",
+                     "add_info": tcl.getDataAddInfo(params)
                      }
 
+        params_filenames = params.get("filename", {})
+
         for p in ["result_rep", "data_rep", "extensions_rep"]:
-            if p not in params_l:
-                params_l[p] = ""
+            if p not in params:
+                params[p] = ""
             if sys.platform != "win32":
-                if src_folder is not None and re.match("./", params_l[p]):
-                    params_l[p] = src_folder+params_l[p][1:]
-                elif params_l[p] == "__TMP_DIR__":
+                if src_folder is not None and re.match("./", params[p]):
+                    params[p] = src_folder+params[p][1:]
+                elif params[p] == "__TMP_DIR__":
                     if tmp_dir is None:
                         tmp_dir = tempfile.mkdtemp(prefix="siren")
-                    params_l[p] = tmp_dir + "/"
+                    params[p] = tmp_dir + "/"
                 elif sys.platform != "darwin":
-                    params_l[p] = re.sub("~", os.path.expanduser("~"), params_l[p])
+                    params[p] = re.sub("~", os.path.expanduser("~"), params[p])
 
         # Make data file names
         filenames["LHS_data"] = ""
-        if len(params_l.get("LHS_data", "")) != 0:
-            filenames["LHS_data"] = params_l["LHS_data"]
-        elif len(params_l.get("data_l", "")) != 0:
-            filenames["LHS_data"] = params_l["data_rep"]+params_l["data_l"]+params_l.get("ext_l", "")
+        if len(params_filenames.get("data_file", [])) > 0:
+            filenames["LHS_data"] = params_filenames["data_file"][0]
+        elif len(params.get("LHS_data", "")) != 0:
+            filenames["LHS_data"] = params["LHS_data"]
+        elif len(params.get("data_l", "")) != 0:
+            filenames["LHS_data"] = params["data_rep"]+params["data_l"]+params.get("ext_l", "")
 
         filenames["RHS_data"] = ""
-        if len(params_l.get("RHS_data", "")) != 0:
-            filenames["RHS_data"] = params_l["RHS_data"]
-        elif len(params_l.get("data_r", "")) != 0:
-            filenames["RHS_data"] = params_l["data_rep"]+params_l["data_r"]+params_l.get("ext_r", "")
+        if len(params_filenames.get("data_file", [])) > 0:
+            if len(params_filenames.get("data_file")) == 1:
+                filenames["RHS_data"] = params_filenames["data_file"][0]  # only one data file: use for both sides
+            else:
+                filenames["RHS_data"] = params_filenames["data_file"][1]  # more than one data file: first to RHS
+                if len(params_filenames["data_file"]) > 2:
+                    params_filenames["queries_file"] = params_filenames["data_file"][2:]+params_filenames.get("queries_file", [])  # the rest, queries
+        elif len(params.get("RHS_data", "")) != 0:
+            filenames["RHS_data"] = params["RHS_data"]
+        elif len(params.get("data_r", "")) != 0:
+            filenames["RHS_data"] = params["data_rep"]+params["data_r"]+params.get("ext_r", "")
 
-        if len(params_l.get("trait_data", "")) != 0:
-            filenames["traits_data"] = params_l["traits_data"]
-        elif len(params_l.get("data_t", "")) != 0:
-            filenames["traits_data"] = params_l["data_rep"]+params_l["data_t"]+params_l.get("ext_t", "")
+        if len(params.get("trait_data", "")) != 0:
+            filenames["traits_data"] = params["traits_data"]
+        elif len(params.get("data_t", "")) != 0:
+            filenames["traits_data"] = params["data_rep"]+params["data_t"]+params.get("ext_t", "")
 
         if os.path.splitext(filenames["LHS_data"])[1] != ".csv" or os.path.splitext(filenames["RHS_data"])[1] != ".csv":
             filenames["style_data"] = "multiple"
             filenames["add_info"] = []
 
-        if len(params_l.get("extensions_names", "")) != 0:
+        if len(params.get("extensions_names", "")) != 0:
             filenames["extensions"] = {}
-            extkf = params_l.get("extensions_names", "")
+            extkf = params.get("extensions_names", "")
             for blck in extkf.strip().split(";"):
                 parts = [p.strip() for p in blck.split("=")]
                 if len(parts) == 2:
-                    filenames["extensions"]["extf_"+parts[0]] = params_l["extensions_rep"] + parts[1]
+                    filenames["extensions"]["extf_"+parts[0]] = params["extensions_rep"] + parts[1]
 
         # Make queries file names
-        if len(params_l.get("queries_file", "")) != 0:
-            filenames["queries"] = params_l["queries_file"]
-        elif params_l.get("out_base", "-") != "-" and len(params_l["out_base"]) > 0 and len(params_l.get("ext_queries", ".queries")) > 0:
-            filenames["queries"] = params_l["result_rep"]+params_l["out_base"]+params_l.get("ext_queries", ".queries")
+        all_queries = []
+        queries_basic = "-"
+        if len(params.get("queries_file", "")) != 0:
+            queries_basic = params["queries_file"]
+            all_queries.append(queries_basic)
+        elif params.get("out_base", "-") != "-" and len(params["out_base"]) > 0 and len(params.get("ext_queries", ".queries")) > 0:
+            queries_basic = params["result_rep"]+params["out_base"]+params.get("ext_queries", ".queries")
+            all_queries.append(queries_basic)
 
-        if filenames["queries"] != "-":
-            if not os.path.isfile(filenames["queries"]):
+        # Make alternate query file name
+        if len(params.get("queries_alternate", "")) > 0:
+            tmp = re.match(PATT_QALT, params["queries_alternate"])
+            if tmp is not None:
+                alt_suff = tmp.group("suff")
+                queries_alternate = tcl.makeUpName(queries_basic, alt_suff)
+            else:
+                queries_alternate = params["queries_alternate"]
+            if not os.path.isfile(queries_alternate) and queries_alternate != "-":
                 try:
-                    tfs = open(filenames["queries"], "a")
+                    tfs = open(queries_alternate, "a")
                     tfs.close()
-                    os.remove(filenames["queries"])
+                    os.remove(queries_alternate)
                 except IOError:
-                    print("Queries output file not writable, using stdout instead...")
-                    filenames["queries"] = "-"
+                    print("Alternate queries file [%s] not writable..." % queries_alternate)
+                    queries_alternate = "-"
+                else:
+                    all_queries.append(queries_alternate)
+
+        for qfilename in params_filenames.get("queries_file", []):
+            tmp = re.match(PATT_QALT, qfilename)
+            if tmp is not None:
+                alt_suff = tmp.group("suff")
+                queries_alternate = tcl.makeUpName(queries_basic, alt_suff)
+            else:
+                queries_alternate = qfilename
+
+            if queries_alternate != "-":
+                if queries_basic == "-":
+                    queries_basic = queries_alternate
+                all_queries.append(queries_alternate)
+
+        if not os.path.isfile(queries_basic) and queries_basic != "-":
+            try:
+                tfs = open(queries_basic, "a")
+                tfs.close()
+                os.remove(queries_basic)
+            except IOError:
+                print("Queries file [%s] not writable..." % queries_basic)
+                queries_basic = "-"
+
+        filenames["queries"] = queries_basic
+        filenames["all_queries"] = all_queries
+
         parts = filenames["queries"].split(".")
         basis = ".".join(parts[:-1])
         filenames["basis"] = basis
 
         # Make named queries file name
-        if filenames["queries"] != "-" and params_l.get("queries_named_file", "") == "+":
+        if filenames["queries"] != "-" and params.get("queries_named_file", "") == "+":
             filenames["queries_named"] = basis+"_named."+parts[-1]
-        elif len(params_l.get("queries_named_file", "")) > 0:
-            filenames["queries_named"] = params_l["queries_named_file"]
+        elif len(params.get("queries_named_file", "")) > 0:
+            filenames["queries_named"] = params["queries_named_file"]
 
         # Make support file name
-        if filenames["queries"] != "-" and params_l.get("support_file", "") == "+" and len(params_l.get("ext_support", "")) > 0:
-            filenames["support"] = basis+params_l["ext_support"]
-        elif len(params_l.get("support_file", "")) > 0:
-            filenames["support"] = params_l["support_file"]
+        if filenames["queries"] != "-" and params.get("support_file", "") == "+" and len(params.get("ext_support", "")) > 0:
+            filenames["support"] = basis+params["ext_support"]
+        elif len(params.get("support_file", "")) > 0:
+            filenames["support"] = params["support_file"]
 
         # Make log file name
-        if filenames["queries"] != "-" and params_l.get("logfile", "") == "+" and len(params_l.get("ext_log", "")) > 0:
-            filenames["logfile"] = basis+params_l["ext_log"]
-        elif len(params_l.get("logfile", "")) > 0:
-            filenames["logfile"] = params_l["logfile"]
+        if filenames["queries"] != "-" and params.get("logfile", "") == "+" and len(params.get("ext_log", "")) > 0:
+            filenames["logfile"] = basis+params["ext_log"]
+        elif len(params.get("logfile", "")) > 0:
+            filenames["logfile"] = params["logfile"]
 
         # Make file name for storing pair candidates
-        if filenames["queries"] != "-" and params_l.get("pairs_store", "") == "+" and len(params_l.get("ext_log", "")) > 0:
-            filenames["pairs_store"] = basis+"_pairs"+params_l["ext_log"]
-        elif len(params_l.get("pairs_store", "")) > 0:
-            filenames["pairs_store"] = params_l["pairs_store"]
+        if filenames["queries"] != "-" and params.get("pairs_store", "") == "+" and len(params.get("ext_log", "")) > 0:
+            filenames["pairs_store"] = basis+"_pairs"+params["ext_log"]
+        elif len(params.get("pairs_store", "")) > 0:
+            filenames["pairs_store"] = params["pairs_store"]
 
-        if len(params_l.get("series_id", "")) > 0:
+        if len(params.get("series_id", "")) > 0:
             for k in filenames.keys():
                 if type(filenames[k]) is str:
-                    filenames[k] = filenames[k].replace("__SID__", params_l["series_id"])
+                    filenames[k] = filenames[k].replace("__SID__", params["series_id"])
 
         if src_folder is not None and re.match("/", src_folder):
             ks = list(filenames.keys()) + list(filenames.get("extensions", {}).keys())
+            for k in ["all_queries"]:
+                for i in range(len(filenames[k])):
+                    if len(filenames[k][i]) > 0 and filenames[k][i] != "-" and not re.match("/", filenames[k][i]):
+                        filenames[k][i] = src_folder+"/"+filenames[k][i]
+
             for k in ks:
-                if k not in ["style_data", "add_info", "extensions"] \
+                if k not in ["style_data", "add_info", "extensions", "all_queries"] \
                         and len(filenames[k]) > 0 and filenames[k] != "-" and not re.match("/", filenames[k]):
                     filenames[k] = src_folder+"/"+filenames[k]
 
@@ -677,71 +720,64 @@ class IOTools:
                 ffp.close()
 
     @classmethod
-    def loadAll(tcl, arguments=[], conf_defs=None, log=True, with_log=True, params_only=False):
-        pm = getPM(conf_defs)
-        pr = PreferencesReader(pm)
+    def loadAll(tcl, arguments=[], conf_defs=None, tasks=[], tasks_default=None, tasks_load={}, conf_filter=None):
 
-        exec_folder = os.path.dirname(os.path.abspath(__file__))
-        src_folder = exec_folder
+        preferences_reader = getPreferencesReader(conf_defs, tasks, tasks_default)
+        params, leftover_args, preferences_mod = preferences_reader.getPreferences(arguments)
+
+        task_load = tasks_load.get(params["task"], {})
+        params_only = task_load.get("params_only", False)
+        if params["task"] in tasks_load:
+            if conf_filter is None:
+                conf_filter = task_load.get("conf_defs")
+            else:
+                conf_filter = conf_filter + task_load.get("conf_defs", [])
+        else:
+            conf_defs = None
+        if params_only and len(preferences_mod) == 0:
+            params["usage"] = True
+        msg = preferences_reader.processHelp(params, conf_filter=conf_filter)
+        if msg is not None:
+            return False, msg
 
         package = None
         pack_filename = None
         config_filename = None
         tmp_dir = None
         reds = None
-        params = None
         leftover_args = None
+        exec_folder = os.path.dirname(os.path.abspath(__file__))
 
-        proceed = processHelpArgs(arguments, pr, min_nb_args=1*(not params_only))
-        if proceed:
-            if len(arguments) > 1 and os.path.isfile(arguments[1]):
-                if os.path.splitext(arguments[1])[1] == Package.DEFAULT_EXT:
-                    pack_filename = arguments[1]
-                    if len(arguments) > 2 and os.path.isfile(arguments[2]):
-                        config_filename = arguments[2]
-                        options_args = arguments[3:]
-                    else:
-                        options_args = arguments[2:]
-                else:
-                    config_filename = arguments[1]
-                    options_args = arguments[2:]
-            else:
-                options_args = arguments[1:]
+        if "src_folder" in params.get("filename", {}):
+            src_folder = params["filename"]["src_folder"]
+        else:
+            src_folder = exec_folder
 
-            if pack_filename is not None:
-                src_folder = os.path.dirname(os.path.abspath(pack_filename))
-                package = Package(pack_filename)
-                elements_read = package.read(pm, params_only=params_only)
-                params = elements_read.get("preferences", None)
-                if not params_only:
-                    data = elements_read.get("data", None)
-                    reds = elements_read.get("reds", None)
-                    tmp_dir = package.getTmpDir()
+        if "pack_file" in params.get("filename", {}):
+            pack_filename = params["filename"]["pack_file"][0]
+            package = Package(pack_filename)
+            elements_read = package.read(preferences_reader, params_only=params_only, pv={})
+            params_more = params
+            params = elements_read.get("preferences", {})
+            params.update(params_more)
+            if not params_only:
+                data = elements_read.get("data", None)
+                reds = elements_read.get("reds", None)
+                tmp_dir = package.getTmpDir()
 
-            elif config_filename is not None:
-                src_folder = os.path.dirname(os.path.abspath(config_filename))
-
-            if options_args is not None:
-                try:
-                    params, leftover_args = pr.getParameters(config_filename, options_args, params, default_to_none=(not params_only))
-                except AttributeError:
-                    params = None
-
-        if params is None:
-            return False, getUsage(arguments[0])
         if params_only:
-            return True, {"params": params, "pm": pm, "leftover_args": leftover_args}
+            return True, {"params": params, "leftover_args": leftover_args,
+                          "preferences_reader": preferences_reader, "preferences_mod": preferences_mod}
 
-        params_l = PreferencesReader.paramsToDict(params)
-        filenames = tcl.prepareFilenames(params_l, tmp_dir, src_folder)
-        if with_log:
-            logger = Log(verbosity=params_l["verbosity"], output=filenames["logfile"])
+        filenames = tcl.prepareFilenames(params, tmp_dir, src_folder)
+        if task_load.get("with_log", True):
+            logger = Log(verbosity=params["verbosity"], output=filenames["logfile"])
         else:
             logger = None
 
         if pack_filename is None:
             data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
-            data.loadExtensions(ext_keys=params_l.get("activated_extensions", []), filenames=filenames.get("extensions"), params=params_l)
+            data.loadExtensions(ext_keys=params.get("activated_extensions", []), filenames=filenames.get("extensions"), params=params)
             if (data is not None) and (reds is None) and ("queries" in filenames) and os.path.exists(filenames["queries"]):
                 # attempt loading redescriptions from file
                 try:
@@ -753,11 +789,76 @@ class IOTools:
                     rs = []
                 reds = [{"items": rs, "src": ("file", filenames["queries"], 1)}]
 
-        if logger is not None and log:
+        if logger is not None and task_load.get("log", True):
             logger.printL(2, data, "log")
 
         if pack_filename is not None:
             filenames["package"] = os.path.abspath(pack_filename)
         # print(filenames)
-        return True, {"params": params, "data": data, "logger": logger,
-                      "filenames": filenames, "reds": reds, "pm": pm, "package": package, "leftover_args": leftover_args}
+        return True, {"params": params, "leftover_args": leftover_args,
+                      "preferences_reader": preferences_reader, "preferences_mod": preferences_mod,
+                      "data": data, "reds": reds,
+                      "logger": logger, "filenames": filenames, "package": package}
+
+    @classmethod
+    def getRedsEtc(tcl, loaded, alt_suff="_alt"):  # HERE -> USE
+        all_queries_src = dict([(q, {"alt_pos": i, "pack_pos": None}) for (i, q) in enumerate(loaded["filenames"].get("all_queries", []))])
+        reds = []
+        srcs_reds = []
+        unloaded = []
+        if loaded["reds"] is not None:
+            count_red_lists = len(loaded["reds"])
+            for i in range(len(loaded["reds"])):
+                src = loaded["reds"][i]["src"][1]
+                if src in all_queries_src:
+                    all_queries_src[src]["pack_pos"] = i
+                else:
+                    all_queries_src[src] = {"alt_pos": None, "pack_pos": i}
+                all_queries_src[src]["nb_reds"] = len(loaded["reds"][i]["items"])
+                all_queries_src[src]["pos"] = len(srcs_reds)
+                reds.extend(loaded["reds"][i]["items"])
+                srcs_reds.append(src)
+
+        for src, poss in all_queries_src.items():
+            if poss["pack_pos"] is None:
+                redsi = None
+                if os.path.exists(src):
+                    # the file exists and redescriptions have not yet been loaded from it
+                    rp = Redescription.getRP()
+                    sid = ("%s" % (len(srcs_reds) + 1))[::-1]  # avoid rid collisions
+                    try:
+                        with open(src) as fd:
+                            redsi, _ = rp.parseRedList(fd, loaded["data"], sid=sid)
+                    except IOError:
+                        redsi = None
+                if redsi is not None:
+                    all_queries_src[src]["nb_reds"] = len(redsi)
+                    all_queries_src[src]["pos"] = len(srcs_reds)
+                    reds.extend(redsi)
+                    srcs_reds.append(src)
+                else:
+                    unloaded.append(src)
+
+        # done loading reds, now decide what to use for output
+        if len(unloaded) != 0:
+            trg_reds = unloaded[-1]
+        else:  # makeup name from queries filename and suffix
+            trg_reds = tcl.makeUpName(loaded["filenames"].get("queries", "-"), alt_suff)
+        return reds, srcs_reds, all_queries_src, trg_reds
+
+    @classmethod
+    def makeUpName(tcl, qfilename=None, alt_suff="_XXX"):
+        if qfilename is None:
+            trg = alt_suff
+        elif qfilename == "-":
+            trg = "-"
+        else:
+            parts = qfilename.split(".")
+            if len(parts) > 1:
+                if "." in alt_suff:
+                    trg = ".".join(parts[:-2] + [parts[-2] + alt_suff])
+                else:
+                    trg = ".".join(parts[:-2] + [parts[-2] + alt_suff, parts[-1]])
+            else:
+                trg = qfilename + alt_suff
+        return trg

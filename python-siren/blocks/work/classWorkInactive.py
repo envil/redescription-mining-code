@@ -162,7 +162,7 @@ class CLIBoss(Boss):
 
     def resetLoggerComm(self):
         # after setting up WorkInactive instance, integrate out queue to logger
-        self.logger_comm = Log("comm", self.getPreferences()['verbosity']["data"],
+        self.logger_comm = Log("comm", self.getPreferences()["verbosity"],
                                self.getWP().getOutQueue(), self.getWP().sendMessage)
 
     def rescheduleCheck(self, countdown=-1):

@@ -31,11 +31,12 @@ class ConnectionDialog(PreferencesDialog):
                     {"name": "rtod", "label": "ResetToDefault", "funct": "self.onResetToDefault"},
                     {"name": "quit", "label": "Done", "funct": "self.onClose"}]
 
-    def __init__(self, parent, pref_handle, wp_handle, boss):
+    def __init__(self, parent, pref_handle, conf_filter=None, wp_handle=None, boss=None):
         """
         Initialize the config dialog
         """
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Worker setup')  # , size=(550, 300))
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, 'Worker setup', style=wx.RESIZE_BORDER | wx.DEFAULT_DIALOG_STYLE)  # , size=(550, 300))
+        self.SetLayoutAdaptationMode(wx.DIALOG_ADAPTATION_MODE_ENABLED)
 
         self.parent = parent
         self.pref_handle = pref_handle
@@ -51,9 +52,9 @@ class ConnectionDialog(PreferencesDialog):
         self.status = 0
         self.cancel_change = False  # Tracks if we should cancel a page change
 
-        section_name = "Network"
-        ti, section = self.pref_handle.getPreferencesManager().getSectionByName(section_name)
-        if ti is not None:
+        secs = self.pref_handle.getPreferencesManager().getTopSections(conf_filter)
+        if len(secs) == 1:
+            section = secs[0]
             sec_id = wx.NewId()
             self.tabs.append(sec_id)
             self.controls_map[sec_id] = {"button": {}, "range": {},
@@ -67,7 +68,8 @@ class ConnectionDialog(PreferencesDialog):
             self.dispInfo(conf, top_sizer)
             self.makeButtons(sec_id, conf, top_sizer)
             conf.SetSizer(top_sizer)
-            top_sizer.Fit(conf)
+            self.top_sizer = top_sizer
+
             self.setSecValuesFromDict(sec_id, self.pref_handle.getPreferences())
 
             status, msg, id_clients = self.wp_handle.getWP().getDetailedInfos()
@@ -98,27 +100,29 @@ class ConnectionDialog(PreferencesDialog):
                 self.setactPing()
             self.updateAction(ipkn)
 
+        self.top_sizer.Fit(self)
         self.Centre()
-        self.Layout()
-        self.Fit()
+        # self.SetSize((700, -1))
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
     def dispInfo(self, frame, top_sizer):
 
-        sec_sizer = wx.BoxSizer(wx.VERTICAL)
+        # sec_sizer = wx.BoxSizer(wx.VERTICAL)
 
-        # ADD INFO BOX
-        text_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        # # ADD INFO BOX
+        # text_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         ctrl_id = wx.NewId()
-        self.info_box = wx.StaticText(frame, wx.NewId(), "")
+        self.info_box = wx.StaticText(frame, wx.NewId(), "",  style=wx.ST_NO_AUTORESIZE, size=(-1, 50))
         self.box_color = self.info_box.GetForegroundColour()
-        text_sizer.Add(self.info_box, 0, wx.EXPAND | wx.ALL, 5)
-        sec_sizer.Add(text_sizer, 0, wx.EXPAND | wx.ALL, 5)
-        top_sizer.Add(sec_sizer, 0,  wx.EXPAND | wx.ALL, 5)
+        # text_sizer.Add(self.info_box, 0, wx.ALL, 5)
+        # sec_sizer.Add(text_sizer, 0, wx.ALL, 5)
+        #top_sizer.Add(sec_sizer, 0,  wx.EXPAND | wx.ALL, 5)
+        # sec_sizer.Add(text_sizer, 0, wx.ALL, 5)
+        top_sizer.Add(self.info_box, 1,  wx.CENTER | wx.EXPAND | wx.ALL, 15)
 
     def makeButtons(self, sec_id, frame, top_sizer):
-        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_sizer = wx.StdDialogButtonSizer()
 
         for button in self.button_types:
             btnId = wx.NewId()
@@ -136,17 +140,27 @@ class ConnectionDialog(PreferencesDialog):
         self.info_box.SetForegroundColour(color)
         self.info_box.SetLabel(text)
 
+    def changedIPKN(self, event):
+        for f in self.IPKN_FIELDS:
+            if event.GetEventObject() == self.controls_map[self.sec_id]["open"][f]:
+                return True
+        return False
+
     def changeHappened(self, event):
-        ipkn_txtctrl = self.getIPKN_TxtCtrl()
-        if ipkn_txtctrl != self.getIPKN_params():
+        if self.changedIPKN(event):
+            ipkn_txtctrl = self.getIPKN_TxtCtrl()
+            if ipkn_txtctrl != self.getIPKN_params():
+                self.controls_map[self.sec_id]["button"]["rtod"].Enable()
+            else:
+                self.controls_map[self.sec_id]["button"]["rtod"].Disable()
+            if ipkn_txtctrl != self.getIPKN_WP():
+                self.controls_map[self.sec_id]["button"]["reset"].Enable()
+            else:
+                self.controls_map[self.sec_id]["button"]["reset"].Disable()
+            self.updateAction(ipkn_txtctrl)
+        else:
             self.controls_map[self.sec_id]["button"]["rtod"].Enable()
-        else:
-            self.controls_map[self.sec_id]["button"]["rtod"].Disable()
-        if ipkn_txtctrl != self.getIPKN_WP():
             self.controls_map[self.sec_id]["button"]["reset"].Enable()
-        else:
-            self.controls_map[self.sec_id]["button"]["reset"].Disable()
-        self.updateAction(ipkn_txtctrl)
 
     def updateAction(self, ipkn_txtctrl):
         if re.match(self.IP_LOC_MATCH, ipkn_txtctrl[0]) or re.match(self.IP_NUM_MATCH, ipkn_txtctrl[0]):
@@ -170,15 +184,11 @@ class ConnectionDialog(PreferencesDialog):
         return self.wp_handle.getWP().getParameters()
 
     def getIPKN_TxtCtrl(self):
-        vdict = self.getSecValuesDict(self.sec_id)
-        return tuple([vdict[f]["value"] for f in self.IPKN_FIELDS])
+        vdict = self.getSecValuesDict(self.sec_id, only_items=self.IPKN_FIELDS)
+        return tuple([vdict[f] for f in self.IPKN_FIELDS])
 
     def getIPKN_params(self):
         return tuple([self.pref_handle.getPreference(f) for f in self.IPKN_FIELDS])
-
-    def setIPK_params(self):
-        vdict = self.getSecValuesDict(self.sec_id)
-        self.pref_handle.updatePreferencesDict(vdict)
 
     def resetIPKN(self, ipkn):
         for i, f in enumerate(self.IPKN_FIELDS):
@@ -187,12 +197,16 @@ class ConnectionDialog(PreferencesDialog):
 
     def onReset(self, event):
         self.resetIPKN(self.getIPKN_WP())
+        self.setSecValuesFromDict(self.sec_id, self.pref_handle.getPreferences(), exclude_items=self.IPKN_FIELDS)
         self.controls_map[self.sec_id]["button"]["reset"].Disable()
 
     def onClose(self, event=None):
         if self.pinged is not None:
             self.pinged[-1].shutdown()
         # return correct code
+        vdict = self.getSecValuesDict(self.sec_id, exclude_items=self.IPKN_FIELDS)
+        self.pref_handle.updatePreferences(vdict)
+        self.setSecValuesFromDict(self.sec_id, self.pref_handle.getPreferences(), exclude_items=self.IPKN_FIELDS)
         self.EndModal(self.status)
 
     def onAction(self, event):
@@ -255,8 +269,7 @@ class ConnectionDialog(PreferencesDialog):
             msg = "Failed, check the parameters and try again (%s)" % e
 
         self.updateInfo(msg, color)
-        self.Layout()
-        self.Fit()
+        # self.top_sizer.Fit(self)
 
     def actStop(self):
         color = ConnectionDialog.FAIL_FC

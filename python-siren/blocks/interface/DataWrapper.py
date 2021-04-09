@@ -19,7 +19,7 @@ from ..mine.classQuery import Query, Literal
 from ..mine.classRedescription import Redescription
 from ..mine.classConstraints import Constraints
 
-from ..mine.classPreferencesManager import PreferencesManager, PreferencesReader
+from ..mine.classPreferencesManager import getPreferencesReader
 from ..mine.classPackage import Package, IOTools
 
 
@@ -36,11 +36,12 @@ class DataWrapper(object):
             self.logger = Log()
         else:
             self.logger = logger
-        self.pm = PreferencesManager(conf_defs)
+
+        self.pr = getPreferencesReader(conf_defs)
         self.data = None
         self.reds = StoredRCollection()
         self.count_loaded_rlists = 0
-        self.preferences = ICDict(self.pm.getDefaultTriplets())
+        self.preferences = ICDict(self.pr.getDefaultValues())
         self.resetConstraints()
         self.setupFilterActs()
         self.package = None
@@ -191,8 +192,11 @@ class DataWrapper(object):
             return self.reds.nbItems()
         return self.reds.getLen(lid)
 
+    def getPreferencesReader(self):
+        return self.pr
+
     def getPreferencesManager(self):
-        return self.pm
+        return self.pr.getManager()
 
     def getPreferences(self):
         return self.preferences
@@ -202,7 +206,7 @@ class DataWrapper(object):
 
     def getPreference(self, param_id):
         if self.preferences is not None and param_id in self.preferences:
-            return self.preferences[param_id]["data"]
+            return self.preferences[param_id]
         else:
             return False
 
@@ -266,11 +270,10 @@ class DataWrapper(object):
         else:
             raise TypeError("The isFromPackage property accepts only Boolean attributes")
 
-    def updatePreferencesDict(self, params):
+    def updatePreferences(self, params):
         # if type(params) == dict:
         if isinstance(params, collections.MutableMapping):
-            params_l = PreferencesReader.paramsToDict(params)
-            dtv = [item_id for (item_id, trip) in params_l.items() if trip != self.getPreference(item_id)]
+            dtv = [item_id for (item_id, trip) in params.items() if trip != self.getPreference(item_id)]
             self.preferences.update(params)
             self.resetConstraints(dtv=dtv)
 
@@ -279,10 +282,9 @@ class DataWrapper(object):
             self.data.getExtension(ek).setParams(self.getPreferences())
         else:
             self.data.initExtension(ek, filenames, self.getPreferences())
-            params_l = self.data.getExtension(ek).getParams()
-            if len(params_l) > 0:
-                params = PreferencesReader(self.pm).readParametersDict(params_l)
-                self.updatePreferencesDict(params)
+            params_e = self.data.getExtension(ek).getParams()
+            if len(params_e) > 0:
+                self.updatePreferences(params_e)
         self.addReloadRecompute()
         self.addReloadData("v")
 
@@ -556,8 +558,8 @@ class DataWrapper(object):
 
     def _readPreferencesFromFile(self, filename):
         filep = open(filename, mode='r')
-        params, _ = PreferencesReader(self.pm).getParameters(filep)
-        return ICDict(params)
+        preferences, _, _ = self.getPreferencesReader().getPreferences(conf_file=filep)
+        return ICDict(preferences)
 
     def _readPackageFromFile(self, filename):
         package = Package(filename, self._stopMessage)
@@ -573,7 +575,7 @@ class DataWrapper(object):
                 AR = preferences.pop("AR")
             self.preferences = ICDict(preferences)
         else:
-            self.preferences = ICDict(self.pm.getDefaultTriplets())
+            self.preferences = ICDict(self.getPreferencesReader().getDefaultValues())
         self.resetConstraints(AR)
 
         if elements_read.get("data") is not None:
@@ -594,9 +596,9 @@ class DataWrapper(object):
         rtp = self.prepareRedsPackage()
         if len(rtp) > 0:
             contents['redescriptions'] = rtp
-        if self.preferences is not None:
-            contents['preferences'] = self.preferences
-            contents['pm'] = self.pm
+        if self.getPreferences() is not None:
+            contents['preferences'] = self.getPreferences()
+            contents['preferences_reader'] = self.getPreferencesReader()
 
         # definitions
         vdefs = ColM.getRP().fieldsToStr()
@@ -675,18 +677,10 @@ class DataWrapper(object):
         else:
             self.savePackageToFile(self.package.getSaveFilename(), None)
 
-    def exportPreferences(self, filename, inc_def=False, conf_def=None):
-        pm = self.pm
-        prefs = self.preferences
-        core = False
-        ## prefs = pm.getDefaultTriplets()
-        if conf_def is not None:
-            pm = PreferencesManager(conf_def)
-            core = not inc_def
-
+    def exportPreferences(self, filename, inc_def=False, conf_filter=None):
         self._startMessage('exporting prefs', filename)
         try:
-            IOTools.writePreferences(prefs, pm, filename, False, inc_def, core)
+            IOTools.writePreferences(self.getPreferences(), self.getPreferencesReader(), filename, toPackage=False, inc_def=inc_def, conf_filter=conf_filter)
         except Exception:
             self._stopMessage()
             raise
@@ -1014,7 +1008,7 @@ class DataWrapper(object):
     #                   "label": "Prune", "legend": "Prune current redescription."})
 
     # FILTER REDS
-    def actFilter(self, info, action_key="redundant_area", action_substitute=None):
+    def actFilter(self, info, action_key="area_redundant", action_substitute=None):
         if info["tab_type"] == "r" and info["active_lid"] is not None and info["nb"] > 0:
             if info["nb"] == 1:
                 compare_iids = self.reds.getIidsListBelow(info["active_lid"], info["iids"][0])

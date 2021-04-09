@@ -1,4 +1,4 @@
-import getopt
+import argparse
 import re
 import os.path
 import sys
@@ -6,19 +6,257 @@ try:
     import toolXML
     import toolICDict
 except ModuleNotFoundError:
-    from . import toolXML, toolICDict
+    from . import toolXML
+    from . import toolICDict
 import pdb
-
-# EACH parameter is a triplet (text, data, value)
-# text is the raw text
-# data is the text casted into the type of the parameter
-# in case of option parameters value is the index of the option among available ones
-# otherwise it is equal to data
-
-# for color parameter, both data and value are the integer triplets representation
 
 USAGE_DEF_HEADER = "Clired redescription mining"
 USAGE_DEF_URL_HELP = "http://cs.uef.fi/siren/help/"
+
+EXT_SIREN = ".siren"
+PATT_QALT = "suff(ix)?(?P<suff>.+)"
+
+conf_names = {"miner": 0, "inout": 0, "dataext": 1, "rnd": 1, "folds": 1}
+
+
+def fillNamesForConfDefs(conf_defs=None):
+    if conf_defs is None:
+        conf_defs = [k for (k, v) in conf_names.items() if v == 0]
+    elif any([(type(c) is int) for c in conf_defs]):
+        cd = set()
+        for cc in conf_defs:
+            if type(cc) is int:
+                cd.update([k for (k, v) in conf_names.items() if v == cc])
+            else:
+                cd.add(cc)
+        conf_defs = list(cd)
+    return conf_defs
+
+
+class CHelpFormatter(argparse.HelpFormatter):
+
+    def _get_help_string(self, action):
+        return action.help
+
+    def _format_action_invocation(self, action):
+        if not action.option_strings:
+            default = self._get_default_metavar_for_positional(action)
+            metavar, = self._metavar_formatter(action, default)(1)
+            return metavar
+
+        else:
+            parts = []
+
+            # if the Optional doesn't take a value, format is:
+            #    -s, --long
+            if action.nargs == 0:
+                if len(action.option_strings) == 1 and action.option_strings[0] == ("--no-%s" % action.dest):
+                    parts.append("--[no-]%s" % action.dest)
+                else:
+                    parts.extend(action.option_strings)
+
+            # if the Optional takes a value, format is:
+            #    -s ARGS, --long ARGS
+            else:
+                default = self._get_default_metavar_for_optional(action)
+                args_string = self._format_args(action, default)
+                for option_string in action.option_strings:
+                    parts.append('%s %s' % (option_string, args_string))
+
+            return ', '.join(parts)
+
+    def _format_args(self, action, default_metavar):
+        get_metavar = self._metavar_formatter(action, default_metavar)
+        if action.nargs is None:
+            result = '%s' % get_metavar(1)
+        elif action.nargs == argparse.OPTIONAL:
+            result = '[%s]' % get_metavar(1)
+        elif action.nargs == argparse.ZERO_OR_MORE:
+            result = '[%s ...]' % get_metavar(1)
+        elif action.nargs == argparse.ONE_OR_MORE:
+            result = '%s [...]' % get_metavar(1)
+        elif action.nargs == argparse.REMAINDER:
+            result = '...'
+        elif action.nargs == argparse.PARSER:
+            result = '%s ...' % get_metavar(1)
+        elif action.nargs == argparse.SUPPRESS:
+            result = ''
+        else:
+            try:
+                formats = ['%s' for _ in range(action.nargs)]
+            except TypeError:
+                raise ValueError("invalid nargs value") from None
+            result = ' '.join(formats) % get_metavar(action.nargs)
+        return result
+
+
+class CAction(argparse.Action):
+
+    suppress_sections = None
+    only_sections = None
+    only_core = False
+
+    def prepareHelp(self, hlp):
+        if self._section is not None:
+            if CAction.only_core and self._core is None:
+                return argparse.SUPPRESS
+            if CAction.only_sections is not None and not any([re.match(s, self._section) is not None for s in CAction.only_sections]):
+                return argparse.SUPPRESS
+            if CAction.suppress_sections is not None and any([re.match(s, self._section) is not None for s in CAction.suppress_sections]):
+                return argparse.SUPPRESS
+        return self._help
+
+    @property
+    def help(self):
+        return self.prepareHelp(self._help)
+
+    @help.setter
+    def help(self, hlp):
+        if hlp == argparse.SUPPRESS:
+            self._help = hlp
+            self._section = None
+            self._core = None
+        else:
+            tmp = re.match("(\[(?P<section>.*)\])?\s*(?P<core>CORE)?\s*(?P<hlp>.*)$", hlp)
+            self._help = tmp.group("hlp")
+            self._section = tmp.group("section")
+            self._core = tmp.group("core")
+
+
+class CStoreAction(argparse._StoreAction, CAction):
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 nargs=None,
+                 const=None,
+                 default=None,
+                 type=None,
+                 choices=None,
+                 required=False,
+                 help=None,
+                 metavar=None):
+        argparse._StoreAction.__init__(self,
+                                       option_strings=option_strings,
+                                       dest=dest,
+                                       nargs=nargs,
+                                       const=const,
+                                       default=default,
+                                       type=type,
+                                       choices=choices,
+                                       required=required,
+                                       help=help,
+                                       metavar=metavar)
+
+
+class CStoreConstAction(argparse._StoreConstAction, CAction):
+
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 const,
+                 default=None,
+                 required=False,
+                 help=None,
+                 metavar=None):
+        argparse._StoreConstAction.__init__(self,
+                                            option_strings=option_strings,
+                                            dest=dest,
+                                            const=const,
+                                            default=default,
+                                            required=required,
+                                            help=help,
+                                            metavar=metavar)
+
+
+class CStoreTrueAction(argparse._StoreTrueAction, CAction):
+
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 default=False,
+                 required=False,
+                 help=None):
+        argparse._StoreTrueAction.__init__(self,
+                                           option_strings=option_strings,
+                                           dest=dest,
+                                           default=default,
+                                           required=required,
+                                           help=help)
+
+
+class CStoreFalseAction(argparse._StoreFalseAction, CAction):
+
+    def __init__(self,
+                 option_strings,
+                 dest,
+                 default=True,
+                 required=False,
+                 help=None):
+        argparse._StoreFalseAction.__init__(self,
+                                            option_strings=option_strings,
+                                            dest=dest,
+                                            default=default,
+                                            required=required,
+                                            help=help)
+
+
+class CFilenameAction(CAction):
+    def __call__(self, parser, namespace, values, option_string=None):
+        items = getattr(namespace, self.dest, None)
+        if items is None:
+            items = {}
+        for filename in values:
+            if "src_folder" not in items:
+                items["src_folder"] = os.path.dirname(os.path.abspath(filename))
+            p, ext = os.path.splitext(filename)
+            if ext == EXT_SIREN:
+                k = "pack_file"
+            elif ext == ".conf" or ext == ".xml":
+                k = "conf_file"
+            elif ext == ".queries":
+                k = "queries_file"
+            elif ext == ".csv":
+                k = "data_file"
+                if re.search("queries", p) or len(items.get(k, [])) > 1:
+                    k = "queries_file"
+            elif ext == ".txt":
+                k = "conf_file"
+                if re.search("queries", p) or len(items.get(k, [])) > 0:
+                    k = "queries_file"
+            elif re.match(PATT_QALT, p):
+                k = "queries_file"
+            else:
+                k = "unknown"
+            if k not in items:
+                items[k] = []
+            items[k].append(filename)
+        setattr(namespace, self.dest, items)
+
+
+class CRangeAction(CAction):
+    def __call__(self, parser, namespace, values, option_string=None):
+        # if self.const[0] <= values <= self.const[1]:
+        setattr(namespace, self.dest, values)
+
+
+class COptionAction(CAction):
+    def __call__(self, parser, namespace, values, option_string=None):
+        v = values[0]  # nargs -> always exactly one value
+        if v not in self.choices:
+            v = self.choices[int(v)]
+        setattr(namespace, self.dest, v)
+
+
+class COptionsAction(CAction):
+    def __call__(self, parser, namespace, values, option_string=None):
+        items = getattr(namespace, self.dest, None)
+        if items is None:
+            items = set()
+        for v in values:
+            if v not in self.choices:
+                v = self.choices[int(v)]
+            items.add(v)
+        setattr(namespace, self.dest, items)
 
 
 class CParameter(object):
@@ -37,20 +275,44 @@ class CParameter(object):
     def getCardinality(self):
         return "unique"
 
-    def isDefault(self, triplet):
-        return triplet.get("value") == self._default
-
     def isCore(self):
         return re.match("CORE", self._legend) is not None
-
-    def getPathFromRoot(self):
-        return self._prf
 
     def setPathFromRoot(self, pfr):
         self._prf = tuple(pfr)
 
+    def getPathFromRoot(self, sep=":"):
+        return self.getPath(sep=sep, from_pos=0)
+
+    def getPath(self, sep=":", from_pos=1):
+        if sep is None:
+            return self._prf[from_pos:]
+        return sep.join(self._prf[from_pos:])
+
+    def suppress(self, only_core=False, only_sections=None, suppress_sections=None):
+        if only_core and not self.isCore():
+            return True
+        path = self.getPathFromRoot()
+        if only_sections is not None and not any([re.match(s, path) is not None for s in only_sections]):
+            return True
+        if suppress_sections is not None and any([re.match(s, path) is not None for s in suppress_sections]):
+            return True
+        return False
+
     def getId(self):
         return self._name
+
+    def getValueType(self):
+        return self._value_type
+
+    def valToText(tcl, value):
+        return str(value)
+
+    def textToVal(self, txt):
+        return toolXML.parseToType(txt, self.getValueType())
+
+    def textToIndex(self, txt):
+        return None
 
     def getTypeDets(self):
         return self.type_str
@@ -61,20 +323,13 @@ class CParameter(object):
     def getLegend(self):
         return re.sub("CORE *", "", self._legend)
 
+    def getArgLegend(self, sep=":"):
+        if sep is not None:
+            return "[%s] %s" % (self.getPathFromRoot(sep), self._legend)
+        return self._legend
+
     def getInfo(self):
         return "%s (%s)" % (self.getLegend(), self.getTypeDets())
-
-    def getDefaultValue(self):
-        return self._default
-
-    def getDefaultData(self):
-        return self._default
-
-    def getDefaultText(self):
-        return str(self._default)
-
-    def getDefaultTriplet(self):
-        return {"value": self.getDefaultValue(), "data": self.getDefaultData(), "text": self.getDefaultText()}
 
     def getLabel(self):
         return self._label
@@ -96,24 +351,48 @@ class CParameter(object):
     def __str__(self):
         return "Parameter (%s): %s" % (self.type_id, self._name)
 
-    def getParamValue(self, raw_value):
-        return toolXML.parseToType(raw_value, self._value_type)
+    def getArgparseBase(self):
+        return {"help": self.getArgLegend(), "default": argparse.SUPPRESS, "type": self.getValueType(), "action": CStoreAction}
 
-    def getParamData(self, raw_value):
-        return self.getParamValue(raw_value)
+    def getArgparseKargs(self):
+        return [(["--"+self.getName()], self.getArgparseBase())]
 
-    def getParamText(self, raw_value):
-        tmp = toolXML.parseToType(raw_value, self._value_type)
-        if tmp is not None:
-            return str(tmp)
+    # DEFAULT
+    def getDefaultValue(self):
+        return self._default
+
+    def isDefaultValue(self, value):
+        return value == self.getDefaultValue()
+
+    def getDefaultIndex(self):
         return None
 
-    def getParamTriplet(self, raw_value):
-        tmp = toolXML.parseToType(raw_value, self._value_type)
-        if tmp is not None:
-            return {"value": tmp, "data": tmp, "text": str(tmp)}
-        else:
-            return None
+    def isDefaultIndex(self, value):
+        return value == self.getDefaultIndex()
+
+    def getDefaultText(self):
+        return self.valToText(self._default)
+
+    # PARAM
+    def getParamValue(self, raw_value):
+        return self.textToVal(raw_value)
+
+    def getParamValueOrDefault(self, raw_value):
+        v = self.getParamValue(raw_value)
+        if v is None:
+            return self.getDefaultValue()
+        return v
+
+    def getParamIndex(self, raw_value):
+        return None
+
+    def getParamText(self, value):
+        return self.valToText(value)
+
+    def getParamTextRaw(self, raw_value):
+        v = self.getParamValue(raw_value)
+        if v is not None:
+            return self.valToText(v)
 
 
 class OpenCParameter(CParameter):
@@ -157,27 +436,17 @@ class RangeCParameter(CParameter):
     def getTypeDets(self):
         return "%s in [%s, %s]" % (self.type_str, self._range_min, self._range_max)
 
+    def getArgparseBase(self):
+        kargs = CParameter.getArgparseBase(self)
+        kargs["action"] = CRangeAction
+        kargs["const"] = (self._range_min, self._range_max)
+        return kargs
+
     def getParamValue(self, raw_value):
-        tmp = toolXML.parseToType(raw_value, self._value_type)
+        tmp = self.textToVal(raw_value)
         if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
             return tmp
         return None
-
-    def getParamData(self, raw_value):
-        return self.getParamValue(raw_value)
-
-    def getParamText(self, raw_value):
-        tmp = toolXML.parseToType(raw_value, self._value_type)
-        if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
-            return str(tmp)
-        return None
-
-    def getParamTriplet(self, raw_value):
-        tmp = toolXML.parseToType(raw_value, self._value_type)
-        if tmp is not None and tmp >= self._range_min and tmp <= self._range_max:
-            return {"value": tmp, "data": tmp, "text": str(tmp)}
-        else:
-            return None
 
 
 class SingleOptionsCParameter(CParameter):
@@ -202,49 +471,63 @@ class SingleOptionsCParameter(CParameter):
     def getTypeDets(self):
         return "%s in {%s}" % (self.type_str, ",".join(self.getOptionsText()))
 
-    def getParamValue(self, raw_value, index=False):
-        if index:
-            tmp = toolXML.parseToType(raw_value, int)
+    def getArgparseBase(self):
+        kargs = CParameter.getArgparseBase(self)
+        kargs["action"] = COptionAction
+        kargs["nargs"] = 1
+        kargs["choices"] = self.getOptions()
+        return kargs
+
+    def textToIndex(self, txt):
+        try:
+            tmp = toolXML.parseToType(txt, int)
             if tmp is not None and tmp >= 0 and tmp < len(self._options):
                 return tmp
-        else:
-            tmp = toolXML.parseToType(raw_value, self._value_type)
-            if tmp is not None and tmp in self._options:
-                return self._options.index(tmp)
-        return None
+        except ValueError:
+            tmp = None
 
-    def getParamData(self, raw_value, index=False):
-        if index:
-            tmp = toolXML.parseToType(raw_value, int)
-            if tmp is not None and tmp >= 0 and tmp < len(self._options):
-                return self._options[tmp]
-        else:
-            tmp = toolXML.parseToType(raw_value, self._value_type)
-            if tmp is not None and tmp in self._options:
-                return tmp
-        return None
-
-    def getParamText(self, raw_value, index=False):
-        tmp = self.getParamData(raw_value, index)
-        if tmp is not None:
-            return str(tmp)
-        return None
-
-    def getParamTriplet(self, raw_value, index=False):
-        tmp = self.getParamValue(raw_value, index)
-        if tmp is not None:
-            return {"value": tmp, "data": self._options[tmp], "text": str(self._options[tmp])}
-        else:
-            return None
+    def getOptions(self):
+        return self._options
 
     def getOptionsText(self):
-        return list(map(str, self._options))
+        return [self.valToText(v) for v in self._options]
+
+    # DEFAULT
+    def getDefaultValue(self):
+        return self._options[self._default]
+
+    def getDefaultIndex(self):
+        return self._default
 
     def getDefaultText(self):
-        return str(self._options[self._default])
+        return self.valToText(self._options[self._default])
 
-    def getDefaultData(self):
-        return self._options[self._default]
+    # PARAM
+    def getParamValue(self, raw_value):
+        if type(raw_value) is int:
+            if raw_value >= -1 and raw_value < len(self._options):
+                return self._options[raw_value]
+            return None
+        try:
+            tmp = self.textToVal(raw_value)
+            if tmp is not None and tmp in self._options:
+                return tmp
+        except ValueError:
+            idx = self.textToIndex(raw_value)
+            if idx is not None:
+                return self._options[idx]
+
+    def getParamIndex(self, raw_value):
+        if type(raw_value) is int:
+            if raw_value >= -1 and raw_value < len(self._options):
+                return raw_value
+            return None
+        try:
+            tmp = self.textToVal(raw_value)
+            if tmp is not None and tmp in self._options:
+                return self._options.index(tmp)
+        except ValueError:
+            return self.textToIndex(raw_value)
 
 
 class BooleanCParameter(SingleOptionsCParameter):
@@ -269,57 +552,28 @@ class BooleanCParameter(SingleOptionsCParameter):
         if self._default is None:
             raise Exception("Default value for param %s not among options!" % self._name)
 
-    def getParamValue(self, raw_value, index=False):
-        if index:
-            tmp = toolXML.parseToType(raw_value, int)
-            if tmp is not None and tmp >= 0 and tmp < len(self._options):
-                return tmp
-        else:
-            try:
-                return int(self.map_str[raw_value.lower()])
-            except (KeyError, AttributeError):
-                return None
-        return None
-
-    def getParamData(self, raw_value, index=False):
-        if index:
-            tmp = toolXML.parseToType(raw_value, int)
-            if tmp is not None and tmp >= 0 and tmp < len(self._options):
-                return self._options[tmp]
-        return self.map_str.get(raw_value)
-
-    def getParamText(self, raw_value, index=False):
-        tmp = self.getParamData(raw_value, index)
-        if tmp is not None:
-            return self.inv_str.get(tmp)
-        return None
-
-    def getParamTriplet(self, raw_value, index=False):
-        tmp = self.getParamValue(raw_value, index)
-        if tmp is not None:
-            return {"value": tmp, "data": self._options[tmp], "text": self.inv_str[self._options[tmp]]}
-        else:
-            return None
-
     def getTypeDets(self):
         return self.type_str
 
-    def getDefaultValue(self):
-        return int(self._default)
+    def getArgparseBase(self, positive=True):
+        if positive:
+            return {"help": argparse.SUPPRESS, "default": argparse.SUPPRESS, "action": CStoreTrueAction, "dest": self.getName()}
+        else:
+            return {"help": self.getArgLegend(), "default": argparse.SUPPRESS, "action": CStoreFalseAction, "dest": self.getName()}
 
-    def getDefaultText(self):
-        return self.inv_str[self._default]
+    def getArgparseKargs(self):
+        return [(["--"+self.getName()], self.getArgparseBase(True)), (["--no-"+self.getName()], self.getArgparseBase(False))]
 
-    def getDefaultData(self):
-        return self._default
-
-    def getOptionsText(self):
-        return [self.inv_str[o] for o in self._options]
+    def valToText(self, value):
+        return self.inv_str.get(value)
 
 
 class MultipleOptionsCParameter(SingleOptionsCParameter):
     type_id = "multiple_options"
     type_str = "multiple options"
+
+    def getCardinality(self):
+        return "multiple"
 
     def parseNode(self, node):
         CParameter.parseNode(self, node)
@@ -332,17 +586,64 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
         if self._default is None or (len(self._default) > 0 and (min(self._default) < 0 or max(self._default) >= len(self._options))):
             raise Exception("Some default value for param %s not among options!" % self._name)
 
-    def getEmptyTriplet(self):
-        return {"value": [], "data": [], "text": []}
+    def getArgparseBase(self):
+        kargs = CParameter.getArgparseBase(self)
+        kargs["action"] = COptionsAction
+        kargs["nargs"] = "*"
+        kargs["choices"] = self.getOptions()
+        return kargs
+
+    # DEFAULT
+    def getDefaultValue(self):
+        return [self._options[d] for d in self._default]
 
     def getDefaultData(self):
         return [self._options[i] for i in self._default]
 
     def getDefaultText(self):
-        return [str(self._options[i]) for i in self._default]
+        return [self.valToText(self._options[i]) for i in self._default]
 
-    def getCardinality(self):
-        return "multiple"
+    # PARAM
+    def getParamValue(self, raw_value):
+        vs = set()
+        for v in raw_value:
+            if type(v) is int:
+                if v >= -1 and v < len(self._options):
+                    vs.add(self._options[v])
+            else:
+                try:
+                    tmp = self.textToVal(v)
+                    if tmp is not None and tmp in self._options:
+                        vs.add(tmp)
+                except ValueError:
+                    idx = self.textToIndex(v)
+                    if idx is not None:
+                        vs.add(self._options[idx])
+        return vs
+
+    def getParamIndex(self, raw_value):
+        vs = set()
+        for v in raw_value:
+            if type(v) is int:
+                if v >= -1 and v < len(self._options):
+                    vs.add(v)
+            else:
+                try:
+                    tmp = self.textToVal(v)
+                    if tmp is not None and tmp in self._options:
+                        vs.add(self._options.index(tmp))
+                except ValueError:
+                    idx = self.textToIndex(v)
+                    if idx is not None:
+                        vs.add(idx)
+        return vs
+
+    def getParamText(self, value):
+        return set([self.valToText(v) for v in value])
+
+    def getParamTextRaw(self, raw_value):
+        vs = self.getParamValue(raw_value)
+        return set([self.valToText(v) for v in vs])
 
 
 class ColorCParameter(CParameter):
@@ -350,47 +651,10 @@ class ColorCParameter(CParameter):
     type_str = "color #RRGGBB"
     match_p = "^#(?P<rr>[0-9A-Fa-f][0-9A-Fa-f])(?P<gg>[0-9A-Fa-f][0-9A-Fa-f])(?P<bb>[0-9A-Fa-f][0-9A-Fa-f])$"
 
-    def parseNode(self, node):
-        CParameter.parseNode(self, node)
-        et = node.getElementsByTagName("default")
-        if len(et) > 0:
-            tmp = toolXML.getValue(et[0], self._value_type)
-            self._default = self.txtToCol(tmp)
-
-        if self._default is None:
-            raise Exception("Default value for param %s not correct!" % self._name)
-
-    def getParamValue(self, raw_value):
-        tmp = toolXML.parseToType(raw_value, self._value_type)
-        return self.txtToCol(tmp)
-
-    def getParamData(self, raw_value):
-        return self.getParamValue(raw_value)
-
-    def getParamText(self, raw_value):
-        if type(raw_value) is tuple:
-            return self.colToTxt(raw_value)
-        else:
-            tmp = toolXML.parseToType(raw_value, self._value_type)
-            if tmp is not None and re.match(self.match_p, tmp):
-                return tmp
-        return None
-
-    def getParamTriplet(self, raw_value):
-        if type(raw_value) is tuple:
-            v = raw_value
-            tmp = self.colToTxt(raw_value)
-        else:
-            tmp = toolXML.parseToType(raw_value, self._value_type)
-            v = self.txtToCol(tmp)
-        if tmp is not None and v is not None:
-            return {"value": v, "data": v, "text": tmp}
-        return None
-
-    def colToTxt(self, tuple_value):
+    def valToText(self, tuple_value):
         return "#"+"".join([v.replace("x", "")[-2:] for v in map(hex, tuple_value)])
 
-    def txtToCol(self, txt_value):
+    def textToVal(self, txt_value):
         if txt_value is not None:
             g = re.match(self.match_p, txt_value)
             if g is not None:
@@ -399,6 +663,21 @@ class ColorCParameter(CParameter):
                 except:
                     raise Warning("Could not parse color %s!" % txt_value)
         return None
+
+    def parseNode(self, node):
+        CParameter.parseNode(self, node)
+        et = node.getElementsByTagName("default")
+        if len(et) > 0:
+            tmp = toolXML.getValue(et[0], self._value_type)
+            self._default = self.textToVal(tmp)
+
+        if self._default is None:
+            raise Exception("Default value for param %s not correct!" % self._name)
+
+    def getArgparseBase(self):
+        kargs = CParameter.getArgparseBase(self)
+        kargs["type"] = self.textToVal
+        return kargs
 
 
 class PreferencesManager(object):
@@ -410,6 +689,12 @@ class PreferencesManager(object):
                        "color_pick": ColorCParameter}
     MTCH_ST = "^(?P<basis>[^0-9]*)((_s(?P<side>[01])_(?P<typ>[0-9]))|(_s(?P<oside>[01]))|(_(?P<otyp>[0-9])))$"
 
+    @classmethod
+    def getConfDefSections(tcl, conf_defs=None):
+        if conf_defs is None:
+            return None
+        return ["%s_confdef.xml" % c if c in conf_names else os.path.basename(c) for c in fillNamesForConfDefs(conf_defs)]
+
     def __init__(self, filenames):
         self.subsections = []
         self.pdict = {}
@@ -420,8 +705,11 @@ class PreferencesManager(object):
             if filename is not None:
                 doc = toolXML.parseXML(filename)
                 if doc is not None:
-                    params = self.processDom(doc.documentElement)
+                    src = os.path.basename(filename)
+                    params = self.processDom(doc.documentElement, secs=[src])
                     if type(params) == dict and len(params) == 1 and "subsections" in params:
+                        for si in range(len(params["subsections"])):
+                            params["subsections"][si]["filename"] = filename
                         self.subsections.extend(params["subsections"])
 
     def __str__(self):
@@ -430,15 +718,14 @@ class PreferencesManager(object):
             strd += self.dispSection(sec)
         return strd
 
-    def getTopSections(self):
-        return self.subsections
-
-    def getSectionByName(self, name):
-        tmp = [(ti, t) for (ti, t) in enumerate(self.getTopSections()) if t["name"] == name]
-        if len(tmp) == 1:
-            return tmp[0]
-        else:
-            return (None, None)
+    def getTopSections(self, conf_filter=None):
+        only_sections = self.getConfDefSections(conf_filter)
+        sections = []
+        for t in self.subsections:
+            path = ":".join(t.get("pfr"))
+            if only_sections is None or any([re.match(s, path) is not None for s in only_sections]):
+                sections.append(t)
+        return sections
 
     def dispSection(self, parameters, level=0):
         strs = ("\t"*level)+("[%s]\n" % parameters.get("name", ""))
@@ -459,6 +746,9 @@ class PreferencesManager(object):
     def getItem(self, item_id):
         return self.pdict.get(item_id, None)
 
+    def getItems(self):
+        return self.pdict.items()
+
     def getNameSidesTypes(self, name):
         tmp = re.match(self.MTCH_ST, name)
         if tmp is not None:
@@ -475,14 +765,14 @@ class PreferencesManager(object):
                 dd[k] = tmp
         return dd
 
-    def getDefaultTriplets(self):
-        return dict([(item_id, item.getDefaultTriplet())
-                     for (item_id, item) in self.pdict.items()])
+    def getDefaultValues(self, only_core=False, only_sections=None, suppress_sections=None):
+        return dict([(item_id, item.getDefaultValue())
+                     for (item_id, item) in self.pdict.items() if not item.suppress(only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)])
 
     def getListOptions(self):
         return [item.getName()+"=" for (item_id, item) in self.pdict.items()]
 
-    def processDom(self, current, sects=[]):
+    def processDom(self, current, secs=[]):
         parameters = None
         name = None
         if toolXML.isElementNode(current):
@@ -490,11 +780,12 @@ class PreferencesManager(object):
                 parameters = {"subsections": []}
                 if toolXML.tagName(current) == "section":
                     parameters["name"] = toolXML.getTagData(current, "name")
+                    parameters["pfr"] = tuple(secs)
                     for k in self.parameter_types.keys():
                         parameters[k] = []
-                    sects = list(sects + [parameters["name"]])
+                    secs = list(secs + [parameters["name"]])
                 for child in toolXML.children(current):
-                    tmp = self.processDom(child, sects)
+                    tmp = self.processDom(child, secs)
                     if tmp is not None:
                         if type(tmp) == dict:
                             parameters["subsections"].append(tmp)
@@ -511,140 +802,11 @@ class PreferencesManager(object):
                 if parameter_type in self.parameter_types.keys():
                     parameters = self.parameter_types[parameter_type]()
                     parameters.parseNode(current)
-                    parameters.setPathFromRoot(sects)
+                    parameters.setPathFromRoot(secs)
         if parameters is not None:
             return parameters
 
-
-class PreferencesReader(object):
-    def __init__(self, pm):
-        self.pm = pm
-
-    @classmethod
-    def paramsToDict(tcl, params, with_num=False):
-        params_l = {}
-        if type(params) in [dict, toolICDict.ICDict]:
-            for k, v in params.items():
-                if type(v) is dict and "data" in v:
-                    params_l[k] = v["data"]
-                    if with_num and "value" in v and v["data"] != v["value"]:
-                        params_l[k+":NUM"] = v["value"]
-        return params_l
-
-    def getParametersDict(self, filename=None, arguments=None, pv=None):
-        params, _ = self.getParameters(filename, arguments, pv)
-        return self.paramsToDict(params, with_num=True)
-
-    def getParameters(self, filename=None, arguments=None, pv=None, default_to_none=False):
-        leftover_args = None
-        if pv is None:
-            pv = self.pm.getDefaultTriplets()
-            only_default = True
-        else:
-            only_default = False
-        if filename is not None:
-            tmp = self.readParametersDict(self.readParametersFromFile(filename))
-            pv.update(tmp)
-            if len(tmp) > 0:
-                only_default = False
-        if arguments is not None:
-            p, leftover_args = self.readParametersFromArguments(arguments)
-            tmp = self.readParametersDict(p)
-            pv.update(tmp)
-            if len(tmp) > 0:
-                only_default = False
-        if only_default and default_to_none:
-            return None, leftover_args
-        return pv, leftover_args
-
-    def readParametersFromArguments(self, arguments):
-        options, args = getopt.getopt(arguments, "", self.pm.getListOptions())
-        tmp = {}
-        for (option, vals) in options:
-            tmp[option.strip(" -")] = vals.strip().split(",")
-        return tmp, args
-
-    def readParametersFromFile(self, filename):
-        tmp = {}
-        if filename is not None:
-            try:
-                doc = toolXML.parseXML(filename)
-            except Exception as inst:
-                print("%s is not a valid configuration file! (%s)" % (filename, inst))
-            else:
-                for current in doc.documentElement.getElementsByTagName("parameter"):
-                    name = toolXML.getTagData(current, "name")
-                    values = toolXML.getValues(current)
-                    tmp[name] = values
-        return tmp
-
-    def readParametersDict(self, params_dict):
-        pv = {}
-        non_matched = {}
-        tt = self.pm.getItemsSidesTypes()
-        bb_matched = {}
-        for tk, t in tt.items():
-            if not t[0] in bb_matched:
-                bb_matched[t[0]] = []
-            bb_matched[t[0]].append((tk, t[1], t[2]))
-
-        for name, values in params_dict.items():
-            item = self.pm.getItem(name)
-            if item is not None:
-                self.prepareItemVal(pv, item, name, values)
-            else:
-                tmp = self.pm.getNameSidesTypes(name)
-                if tmp[0] in bb_matched:
-                    non_matched[name] = tmp
-        if len(non_matched):
-            fill_matched = {}
-            kk = sorted(non_matched.keys())
-            for k in kk:
-                cbasis, cside, ctyp = non_matched[k]
-                for elem in bb_matched[cbasis]:
-                    if (elem[1] == cside or elem[1] == -1 or -1 == cside) and (elem[2] == ctyp or elem[2] == -1 or -1 == ctyp):
-                        fill_matched[elem[0]] = k
-            # print("fill_matched", fill_matched)
-            for name, nn in fill_matched.items():
-                values = params_dict[nn]
-                item = self.pm.getItem(name)
-                if item is not None:
-                    self.prepareItemVal(pv, item, name, values)
-        return pv
-
-    def prepareItemVal(self, pv, item, name, values):
-        try:
-            len(values)
-        except TypeError:
-            values = [values]
-        if len(values) == 1 and item.getCardinality() == "unique":
-            value = item.getParamTriplet(values[0])
-            if value is not None:
-                pv[name] = value
-        elif item.getCardinality() == "multiple":
-            tmp_opts = []
-            tmp_ok = True
-            for tmp_s in values:
-                tmp = item.getParamTriplet(tmp_s)
-                if tmp is not None:
-                    tmp_opts.append(tmp)
-                else:
-                    tmp_ok = False
-            if tmp_ok:
-                # if name == 'map_elem_circ' or name == 'rhs_neg_query_2':
-                #     pdb.set_trace()
-
-                values = {}
-                if len(tmp_opts) > 0:
-                    for k in tmp_opts[0].keys():
-                        values[k] = []
-                        for t in tmp_opts:
-                            values[k].append(t[k])
-                else:
-                    values = {'text': [], 'data': [], 'value': []}
-                pv[name] = values
-
-    def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False, core=False):
+    def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None):
         indents = ""
         strd, header, footer = ("", "", "")
         if sections:
@@ -652,124 +814,309 @@ class PreferencesReader(object):
             header = ("\t"*level)+"<section>\n"+indents+("<name>%s</name>\n" % parameters.get("name", ""))
             footer = ("\t"*level)+"</section>\n"
 
-        for k in self.pm.parameter_types.keys():
+        for k in self.parameter_types.keys():
             for item_id in parameters[k]:
-                item = self.pm.getItem(item_id)
-                if pv is None or item_id not in pv:
-                    vs = item.getDefaultTriplet()
-                else:
-                    vs = pv[item_id]
-                if item is not None and ((core and item.isCore()) or (defaults or not item.isDefault(vs))):
+                item = self.getItem(item_id)
+                if item is not None:
+                    if pv is None or item_id not in pv:
+                        vs = item.getDefaultText()
+                        is_def = True
+                    else:
+                        vs = item.getParamText(pv[item_id])
+                        is_def = item.isDefaultValue(pv[item_id])
+
+                    if not (defaults or not is_def) or item.suppress(only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections):
+                        item = None
+
+                if item is not None:  # and ((core and item.isCore()) or (defaults or not is_def))
                     strd += indents+"<parameter>\n"
                     strd += indents+"\t<name>" + item.getName() + "</name>\n"
                     if sections:
                         strd += indents+"\t<label>" + item.getLabel() + "</label>\n"
                     if helps:
                         strd += indents+"\t<info>" + item.getInfo() + "</info>\n"
-                    if type(vs["text"]) == list:
-                        for v in vs["text"]:
+                    if type(vs) == list:
+                        for v in vs:
                             strd += indents+"\t<value>" + v + "</value>\n"
                     else:
-                        strd += indents+"\t<value>" + vs["text"] + "</value>\n"
+                        strd += indents+"\t<value>" + vs + "</value>\n"
                     strd += indents+"</parameter>\n"
 
         for k in parameters["subsections"]:
-            strd += self.dispParametersRec(k, pv, level+1, sections, helps, defaults, core)
+            strd += self.dispParametersRec(k, pv, level+1, sections, helps, defaults,
+                                           only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
         if len(strd) > 0:
             return header + strd + footer
         else:
             return ""
 
-    def dispParameters(self, pv=None, sections=True, helps=False, defaults=False, core=False):
+    def dispParameters(self, pv=None, conf_filter=None, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None):
+        if only_sections is None and suppress_sections is None:
+            only_sections = self.getConfDefSections(conf_filter)
+        if (pv is None or conf_filter is not None) and defaults:
+            helps = True
+            if not only_core:
+                sections = True
+
         strd = ""
-        for subsection in self.pm.subsections:
-            ## print("---SUBSECTION:", subsection.get("name"))
-            strd += self.dispParametersRec(subsection, pv, 0, sections, helps, defaults, core)
+        for subsection in self.subsections:
+            # print("---SUBSECTION:", subsection.get("name"))
+            strd += self.dispParametersRec(subsection, pv, 0, sections, helps, defaults,
+                                           only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
         if len(strd) == 0:
             strd = "<!-- Using only default parameters --> "
         return "<root>\n"+strd+"</root>"
 
-# def rdictStr(rdict, level=0):
-#     strd = ""
-#     for k, v in rdict.items():
-#         strd += ("\t"*level)+"["+str(k)+"]\n"
-#         if type(v) == dict:
-#             strd += rdictStr(v, level+1)
-#         else:
-#             tmp_str = str(v)
-#             tmp_str.replace("\n", "\n"+("\t"*(level+1)))
-#             strd += ("\t"*(level+1))+tmp_str+"\n"
-#     return strd
+    def collectParametersRec(self, parameters, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+        items = []
+        for k in self.parameter_types.keys():
+            for item_id in parameters[k]:
+                item = self.getItem(item_id)
+                if not item.suppress(only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections):
+                    items.append((item_id, item))
+        if len(items) > 0 and sections:
+            items.insert(0, ("[section]", tuple(parameters["pfr"] + (parameters["name"],))))
+
+        for k in parameters["subsections"]:
+            items.extend(self.collectParametersRec(k, sections,
+                                                   only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections))
+        return items
+
+    def collectParameters(self, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+        items = []
+        for subsection in self.subsections:
+            items.extend(self.collectParametersRec(subsection, sections,
+                                                   only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections))
+        return items
 
 
-def getUsage(arg_zero, header=None, footer=None):
-    if header is None:
-        header = USAGE_DEF_HEADER + "\n"
-    if footer is None:
-        footer = "\nFor more details see "+USAGE_DEF_URL_HELP+"formats.html and "+USAGE_DEF_URL_HELP+"preferences.html#mining-parameters"
+class PreferencesReader(argparse.ArgumentParser):
 
-    exec_name = arg_zero.split("/")[-1].replace(".py", "")
-    return (
-        f'{header}'
-        f'usage: "{exec_name} [config_file] [additional_parameters]"\n'
-        f'       Type "{exec_name} --config" to generate a default configuration file\n'
-        f'         or "{exec_name} --template" to generate a basic configuration template{footer}'
-    )
+    outer_arguments = ["template", "config", "pack_file", "conf_file"]
+    @classmethod
+    def copyParams(tcl, params):
+        return dict(params.items())
 
+    def __init__(self, pm, tasks=[], tasks_default=None, description=None, epilog=None):
+        if description is None:
+            description = USAGE_DEF_HEADER+"."
+        if epilog is None:
+            epilog = "\nFor more details see "+USAGE_DEF_URL_HELP+"formats.html and "+USAGE_DEF_URL_HELP+"preferences.html#mining-parameters"
+        argparse.ArgumentParser.__init__(self, description=description, epilog=epilog, formatter_class=CHelpFormatter)
+        self.pm = pm
 
-def processHelpArgs(arguments, pr, min_nb_args=1):
-    if len(arguments) > 1:
-        if arguments[1] == "--help" or arguments[1] == "-h":
-            return False
-        elif arguments[1] == "--template":
-            print(pr.dispParameters(pv=None, sections=False, helps=True, defaults=False, core=True))
-            sys.exit(2)
-        elif arguments[1] == "--config":
-            print(pr.dispParameters(pv=None, sections=True, helps=True, defaults=True, core=False))
-            sys.exit(2)
-        return True
-    return len(arguments) > min_nb_args
+        self.add_argument("filename", nargs="*", type=str, action=CFilenameAction, default=argparse.SUPPRESS, help="Preferences file (.conf), data file (.csv), queries file (.queries) or Siren package (.siren) containing the data, preferences, etc.")
 
+        self.add_argument("--config", action="store_true", help="generate a default preferences file")
+        self.add_argument("--template", action="store_true", help="generate a basic preferences template")
+        self.add_argument("--debug", action="store_true", help="turn on debugging mode")
 
-def getParams(arguments, conf_defs, min_nb_args=1):
-    pm = PreferencesManager(conf_defs)
-    pr = PreferencesReader(pm)
-    config_filename = None
-    params = None
-
-    proceed = processHelpArgs(arguments, pr, min_nb_args)
-    if proceed:
-        if os.path.isfile(arguments[1]):
-            config_filename = arguments[1]
-            options_args = arguments[2:]
+        choices_task = set(tasks)
+        if tasks_default is not None:
+            choices_task.add(tasks_default)
+            default_task = tasks_default
         else:
-            options_args = arguments[1:]
-        params = pr.getParametersDict(config_filename, options_args)
+            default_task = argparse.SUPPRESS
+        if len(choices_task) > 0:
+            self.add_argument("--task", type=str, choices=choices_task, default=default_task, help="task to perform")
 
-    if params is None:
-        print(getUsage(arguments[0]))
-        sys.exit(2)
-
-    return params
-
-
-conf_names = {"miner": 0, "inout": 0, "dataext": 1, "rnd": 1}
-
-
-def getPM(conf_defs=None):
-    if conf_defs is None:
-        conf_defs = [k for (k, v) in conf_names.items() if v == 0]
-    elif any([(type(c) is int) for c in conf_defs]):
-        cd = set()
-        for cc in conf_defs:
-            if type(cc) is int:
-                cd.update([k for (k, v) in conf_names.items() if v == cc])
+        g = self
+        for (item_id, item) in pm.collectParameters():
+            if item_id == "[section]":
+                g = self.add_argument_group(":".join(item[1:]))  # drop file src
             else:
-                cd.add(cc)
-        conf_defs = list(cd)
+                for (args, kargs) in item.getArgparseKargs():
+                    g.add_argument(*args, **kargs)
+
+    def getManager(self):
+        return self.pm
+
+    def getTopSections(self, conf_filter=None):
+        return self.getManager().getTopSections(conf_filter=conf_filter)
+
+    def getDefaultValues(self, only_core=False, only_sections=None, suppress_sections=None):
+        return self.getManager().getDefaultValues(only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
+
+    def dispParameters(self, pv=None, conf_filter=None, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None):
+        return self.getManager().dispParameters(pv=pv, conf_filter=conf_filter, sections=sections, helps=helps, defaults=defaults,
+                                                only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
+
+    def collectParameters(self, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+        return self.getManager().collectParameters(sections=sections, only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
+
+    def format_help(self, only_core=True, only_sections=None, suppress_sections=None):
+        CAction.only_core = only_core
+        CAction.only_sections = only_sections
+        CAction.suppress_sections = suppress_sections
+        return argparse.ArgumentParser.format_help(self)
+
+    def processHelp(self, params, conf_filter=None):
+        if params.get("usage", False):
+            return self.format_usage()
+        if params.get("template"):
+            return self.getManager().dispParameters(pv=params, conf_filter=conf_filter, sections=False, helps=True, defaults=False, only_core=True)
+        elif params.get("config"):
+            return self.getManager().dispParameters(pv=None, conf_filter=conf_filter, sections=True, helps=True, defaults=True, only_core=False)
+
+    def parse_arguments(self, arguments=[]):
+        parsed, leftover = self.parse_known_args(arguments)
+        return vars(parsed), leftover
+
+    def apply_actions(self, action_tuples, namespace=None):
+        if namespace is None:
+            namespace = argparse.Namespace()
+
+        for action, argument_strings, option_string in action_tuples:
+            argument_values = self._get_values(action, argument_strings)
+            if argument_values is not argparse.SUPPRESS:
+                action(self, namespace, argument_values, option_string)
+
+        return vars(namespace)
+
+    def _check_value(self, action, value):
+        # converted value must be one of the choices (if specified)
+        if action.choices is not None and value not in action.choices:
+            if value == "-":
+                value = "-1"
+            try:
+                v = int(value)
+            except ValueError:
+                v = None
+            if v is None or v < -1 or v >= len(action.choices):
+                raise argparse.ArgumentError(action, "invalid choice: %s (choose from %s)" % (value, ", ".join(map(repr, action.choices))))
+        elif action.const is not None and type(action.const) is tuple and not (action.const[0] <= value <= action.const[1]):
+            raise argparse.ArgumentError(action, "invalid value: %s (choose from [%s, %s])" % (value, action.const[0], action.const[1]))
+
+    def getPreferences(self, arguments=None, conf_file=None, pv=None):
+        preferences_mod = set()
+        if pv is None:
+            pv = self.getManager().getDefaultValues()
+
+        if arguments is not None and len(arguments) > 1:
+            params_cmdline, leftover_args = self.parse_arguments(arguments[1:])
+        else:
+            params_cmdline, leftover_args = ({}, [])
+        conf_files = []
+        if conf_file is not None:
+            conf_files.append(conf_file)
+        if "conf_file" in params_cmdline.get("filename", {}):
+            conf_files.extend(params_cmdline["filename"]["conf_file"])
+
+        for conf_file in conf_files:
+            acts_f = self.collectActsFromXMLFile(conf_file)
+            if acts_f is None:
+                acts_f = self.collectActsFromTxtFile(conf_file)
+            if acts_f is None:
+                print("%s is not a valid configuration file!" % conf_file)
+            else:
+                params_cfile = self.apply_actions(acts_f)
+                preferences_mod.update(params_cfile.keys())
+                pv.update(params_cfile)
+        preferences_mod.update(params_cmdline.keys())
+        preferences_mod.difference(self.outer_arguments)
+        pv.update(params_cmdline)
+        return pv, leftover_args, preferences_mod
+
+    def collectActsFromTxtFile(self, conf_file):
+        action_tuples = []
+        if isinstance(conf_file, str):
+            fp = open(conf_file)
+            filepos = None
+        else:
+            fp = conf_file
+            filepos = fp.tell()
+        for line in fp:
+            if not re.match("#", line):
+                parts = line.strip().split()
+                if len(parts) > 0:
+                    option_string = "--"+parts[0]
+                    if option_string in self._option_string_actions:
+                        if len(parts) == 1:
+                            action_tuples.append((self._option_string_actions[option_string], [], option_string))
+                        else:
+                            for p in parts[1:]:
+                                action_tuples.append((self._option_string_actions[option_string], [p], option_string))
+                    else:
+                        raise Warning("Ignore (probably outdated) argument [%s]" % parts[0])
+        if filepos is not None:
+            fp.seek(filepos)
+        else:
+            fp.close()
+        return action_tuples
+
+    def collectActsFromXMLFile(self, conf_file):
+        try:
+            doc = toolXML.parseXML(conf_file)
+        except Exception as instX:
+            return None
+
+        if doc is not None:
+            action_tuples = []
+            try:
+                for current in doc.documentElement.getElementsByTagName("parameter"):
+                    name = toolXML.getTagData(current, "name")
+                    values = toolXML.getValues(current)
+
+                    option_string = "--"+name
+                    if option_string in self._option_string_actions:
+                        if len(values) == 0:
+                            action_tuples.append((self._option_string_actions[option_string], [], option_string))
+                        else:
+                            for p in values:
+                                action_tuples.append((self._option_string_actions[option_string], [p], option_string))
+            except Exception as instX:
+                return None
+            return action_tuples
+
+    # def readParametersDict(self, params_dict, type_cast=False):
+    #     pv = {}
+    #     non_matched = {}
+    #     tt = self.pm.getItemsSidesTypes()
+    #     bb_matched = {}
+    #     for tk, t in tt.items():
+    #         if not t[0] in bb_matched:
+    #             bb_matched[t[0]] = []
+    #         bb_matched[t[0]].append((tk, t[1], t[2]))
+
+    #     for name, values in params_dict.items():
+    #         item = self.pm.getItem(name)
+    #         if item is not None:
+    #             self.prepareItemVal(pv, item, name, values, type_cast=type_cast)
+    #         else:
+    #             tmp = self.pm.getNameSidesTypes(name)
+    #             if tmp[0] in bb_matched:
+    #                 non_matched[name] = tmp
+    #     if len(non_matched):
+    #         fill_matched = {}
+    #         kk = sorted(non_matched.keys())
+    #         for k in kk:
+    #             cbasis, cside, ctyp = non_matched[k]
+    #             for elem in bb_matched[cbasis]:
+    #                 if (elem[1] == cside or elem[1] == -1 or -1 == cside) and (elem[2] == ctyp or elem[2] == -1 or -1 == ctyp):
+    #                     fill_matched[elem[0]] = k
+    #         # print("fill_matched", fill_matched)
+    #         for name, nn in fill_matched.items():
+    #             values = params_dict[nn]
+    #             item = self.pm.getItem(name)
+    #             if item is not None:
+    #                 self.prepareItemVal(pv, item, name, values)
+    #     return pv
+
+
+def getPathsForConfDefs(conf_defs=None):
+    conf_defs = fillNamesForConfDefs(conf_defs)
     pref_dir = os.path.dirname(os.path.abspath(__file__))
-    conf_files = ["%s/%s_confdef.xml" % (pref_dir, c) if c in conf_names else c for c in conf_defs]
-    return PreferencesManager(conf_files)
+    conf_paths = ["%s/%s_confdef.xml" % (pref_dir, c) if c in conf_names else c for c in conf_defs]
+    return conf_paths
+
+
+def getPreferencesManager(conf_defs=None):
+    conf_paths = getPathsForConfDefs(conf_defs)
+    return PreferencesManager(conf_paths)
+
+
+def getPreferencesReader(conf_defs=None, tasks=[], tasks_default=None, description=None, epilog=None):
+    return PreferencesReader(getPreferencesManager(conf_defs), tasks, tasks_default, description, epilog)
 
 
 if __name__ == "__main__":
@@ -778,5 +1125,6 @@ if __name__ == "__main__":
     import sys
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
-    params = getParams(sys.argv, conf_defs)
+    pr = getPreferencesReader(conf_defs)
+    params, leftover_args, preferences_mod = pr.getPreferences(sys.argv)
     print(params)

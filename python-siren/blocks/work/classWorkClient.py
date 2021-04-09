@@ -1,8 +1,8 @@
+#!/usr/bin/env python
 import multiprocessing
 from multiprocessing.managers import SyncManager  # needed, the above is not enough
 import time
 import sys
-import getopt
 import socket
 import uuid
 import re
@@ -304,7 +304,3 @@ class WorkClient(WorkInactive):
         self.hid = None
         death_notice.append({"type_message": "error", "source": "WP-!", "message": "Work server died!"})
         return death_notice
-
-
-if __name__ == '__main__':
-    print("OK")

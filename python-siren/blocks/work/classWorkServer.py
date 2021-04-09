@@ -1,8 +1,7 @@
 import multiprocessing
 import time
-import sys
 import os
-import getopt
+import argparse
 from multiprocessing.managers import SyncManager
 
 from ..mine.classMiner import instMiner
@@ -25,7 +24,7 @@ def sendMessage(output, message, type_message, source):
 class WorkerProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, cust_params={}):
         multiprocessing.Process.__init__(self)
-        verbosity = preferences.get("verbosity", {"data": 0})["data"]
+        verbosity = preferences.get("verbosity", 0)
         logger = Log("inter", verbosity, output=result_q, method_comm=sendMessage)
         self.miner = instMiner(data, preferences, logger, pid, qin=queue_in, cust_params=cust_params)
         self.cust_params = cust_params
@@ -49,7 +48,7 @@ class ProjectorProcess(multiprocessing.Process):
     def __init__(self, pid, data, preferences, queue_in, result_q, proj={}):
         multiprocessing.Process.__init__(self)
         self.id = pid
-        verbosity = preferences.get("verbosity", {"data": 0})["data"]
+        verbosity = preferences.get("verbosity", 0)
         self.logger = Log("inter", verbosity, output=result_q, method_comm=sendMessage)
         if proj is not None:
             self.proj = proj
@@ -330,27 +329,28 @@ class WorkHandler(object):
             self.manager.shutdown()
             self.work_server.unregister(self.getId())
 
+
 # main entry point
 
+def run_server(sargs):
 
-def run_server(sargv):
-    args = {}
-    if len(sargv) > 1:
-        args = dict([(k.strip("-"), v) for (k, v) in getopt.getopt(sargv[1:], "", ["port=", "authkey=", "max_k=", "chroot=", "setuid=", "setgid="])[0]])
-    for k in ["port", "max_k", "setuid", "setgid"]:
-        if k in args:
-            try:
-                args[k] = int(args[k])
-            except ValueError:
-                del args[k]
-    if "setuid" in args:
-        if "setgid" in args:
-            # We need to drop GID before we drop UID
-            os.setgid(args.pop("setgid"))
-        os.setuid(args.pop("setuid"))
-    else:  # setuid not in args
-        if "setgid" in args:
-            os.setgid(args.pop("setgid"))
+    parser = argparse.ArgumentParser(description='Launch server for off-loading redescription mining computations.')
+    parser.add_argument("-p", "--port", type=int, help="address on which the manager process listens for new connections", default=PORT)
+    parser.add_argument("-a", "--authkey", type=str, help="authentication key which will be used to check the validity of incoming connections to the server process", default=AUTHKEY)
+    parser.add_argument("-m", "--max_k", type=int, help="maximum number of computational tasks handled at once", default=MAXK)
+    parser.add_argument("-c", "--chroot", type=str, help="change the root directory of the current process to this path", default=argparse.SUPPRESS)
+    parser.add_argument("-u", "--uid", type=int, help="set the current process's user id", default=argparse.SUPPRESS)
+    parser.add_argument("-g", "--gid", type=int, help="set the current process's group id", default=argparse.SUPPRESS)
+
+    args = vars(parser.parse_args(sargs[1:]))
+    if "uid" in args:
+        if "gid" in args:
+            # We drop GID before we drop UID
+            os.setgid(args.pop("gid"))
+        os.setuid(args.pop("uid"))
+    else:  # uid not in args
+        if "gid" in args:
+            os.setgid(args.pop("gid"))
         if "chroot" in args:
             os.chroot(args.pop("chroot"))
 

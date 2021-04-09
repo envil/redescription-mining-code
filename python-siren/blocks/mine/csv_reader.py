@@ -1,4 +1,8 @@
-import sys, re, io, numpy, zipfile
+import sys
+import re
+import io
+import numpy
+import zipfile
 import csv
 
 try:
@@ -10,8 +14,8 @@ except ModuleNotFoundError:
 
 import pdb
 
-LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude','lats', 'latitudes', 'Lats', 'Latitudes')
-LONGITUDE = ('long', 'longitude', 'Long', 'Longitude','longs', 'longitudes', 'Longs', 'Longitudes')
+LATITUDE = ('lat', 'latitude', 'Lat', 'Latitude', 'lats', 'latitudes', 'Lats', 'Latitudes')
+LONGITUDE = ('long', 'longitude', 'Long', 'Longitude', 'longs', 'longitudes', 'Longs', 'Longitudes')
 IDENTIFIERS = ('id', 'identifier', 'Id', 'Identifier', 'ids', 'identifiers', 'Ids', 'Identifiers', 'ID', 'IDS')
 COND_TIME = 'cond_time'
 COND_COL = ('cond_var', 'cond_col', 'timeid', COND_TIME)
@@ -24,12 +28,16 @@ COLVAR = ['cid', 'CID', 'cids', 'CIDS', 'variable', 'Variable', 'variables', 'Va
 COLVAL = ['value', 'Value', 'values', 'Values']
 
 FOLDS_PREF = "folds_subs_"
+FOLDS_PATT = "^(v\d+:)?"+FOLDS_PREF
+
 
 class CSVRError(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return repr(self.value)
+
 
 def test_some_numbers(strgs):
     i = len(strgs)
@@ -41,6 +49,7 @@ def test_some_numbers(strgs):
         except:
             pass
     return False
+
 
 def test_all_numbers(strgs):
     i = len(strgs)
@@ -55,51 +64,59 @@ def test_all_numbers(strgs):
 
 class RowOrder(object):
     def __init__(self, LhasIds=False, RhasIds=False, Lids=None, Rids=None,
-                LhasTimes=False, RhasTimes=False, Ltimes=None, Rtimes=None,
-                LhasCoords=False, RhasCoords=False, Lcoords=None, Rcoords=None):
+                 LhasTimes=False, RhasTimes=False, Ltimes=None, Rtimes=None,
+                 LhasCoords=False, RhasCoords=False, Lcoords=None, Rcoords=None):
         self.setKeys(LhasIds, RhasIds, Lids, Rids,
-                LhasTimes, RhasTimes, Ltimes, Rtimes,
-                LhasCoords, RhasCoords, Lcoords, Rcoords)
+                     LhasTimes, RhasTimes, Ltimes, Rtimes,
+                     LhasCoords, RhasCoords, Lcoords, Rcoords)
         self.orders = self.computeOrders()
-        
+
     def resetKeys(self):
         self.orders = None
-        self.Ns = [-1,-1]
+        self.Ns = [-1, -1]
         self.key_ids = None
         self.key_times = None
         self.key_coords = None
-        
+
     def setKeyIds(self, Lids, Rids):
         self.key_ids = [Lids, Rids]
+
     def setKeyTimes(self, Ltimes, Rtimes):
         self.key_times = [Ltimes, Rtimes]
+
     def setKeyCoords(self, Lcoords, Rcoords):
         self.key_coords = [Lcoords, Rcoords]
 
     def hasKeyIds(self):
         return self.key_ids is not None
+
     def hasKeyTimes(self):
         return self.key_times is not None
+
     def hasKeyCoords(self):
         return self.key_coords is not None
 
     def getKeyId(self, side, row):
-        if self.key_ids is not None and row < len(self.key_ids[side]):            
+        if self.key_ids is not None and row < len(self.key_ids[side]):
             return [self.key_ids[side][row]]
         else:
             return []
+
     def getKeyTime(self, side, row):
-        if self.key_times is not None and row < len(self.key_times[side]):            
+        if self.key_times is not None and row < len(self.key_times[side]):
             return [self.key_times[side][row]]
         else:
             return []
+
     def getKeyCoord(self, side, row):
-        if self.key_coords is not None and row < len(self.key_coords[side]):            
+        if self.key_coords is not None and row < len(self.key_coords[side]):
             return [self.key_coords[side][row]]
         else:
             return []
+
     def getKeyTuple(self, side, row):
         return tuple(self.getKeyId(side, row) + self.getKeyTime(side, row) + self.getKeyCoord(side, row))
+
     def getKeyStr(self, side, row):
         return "::".join(["%s" % v for v in self.getKeyId(side, row) + self.getKeyTime(side, row) + self.getKeyCoord(side, row)])
 
@@ -107,11 +124,12 @@ class RowOrder(object):
         if self.Ns[side] > 0:
             return [self.getKeyTuple(side, row) for row in range(self.Ns[side])]
         return []
+
     def getAllKeysStr(self, side):
         if self.Ns[side] > 0:
             return [self.getKeyStr(side, row) for row in range(self.Ns[side])]
         return []
-    
+
     def setKeys(self, LhasIds=False, RhasIds=False, Lids=None, Rids=None,
                 LhasTimes=False, RhasTimes=False, Ltimes=None, Rtimes=None,
                 LhasCoords=False, RhasCoords=False, Lcoords=None, Rcoords=None):
@@ -122,21 +140,21 @@ class RowOrder(object):
             self.setKeyTimes(Ltimes, Rtimes)
         if (LhasCoords and RhasCoords):
             self.setKeyCoords(Lcoords, Rcoords)
-               
+
     def validLen(self):
-        Ns = [-1,-1]
+        Ns = [-1, -1]
         if self.hasKeyIds():
-            for side in [0,1]:
+            for side in [0, 1]:
                 Ns[side] = len(self.key_ids[side])
         if self.hasKeyTimes():
-            for side in [0,1]:
-                if Ns[side] == -1: 
+            for side in [0, 1]:
+                if Ns[side] == -1:
                     Ns[side] = len(self.key_times[iside])
                 elif Ns[side] != len(self.key_times[side]):
                     raise CSVRError('Incoherent length of keys! %d vs. %d (times on side %d)' % (Ns[side], len(self.key_times[side]), side))
         if self.hasKeyCoords():
-            for side in [0,1]:
-                if Ns[side] == -1: 
+            for side in [0, 1]:
+                if Ns[side] == -1:
                     Ns[side] = len(self.key_coords[iside])
                 elif Ns[side] != len(self.key_coords[side]):
                     raise CSVRError('Incoherent length of keys! %d vs. %d (coords on side %d)' % (Ns[side], len(self.key_coords[side]), side))
@@ -147,14 +165,14 @@ class RowOrder(object):
 
     def hasOrders(self):
         return self.orders is not None
-    
+
     def getOrders(self):
         return self.orders
-    
+
     def computeOrders(self):
         if not self.validLen():
             return None
-        
+
         # formatL = "::".join(["%s" for i in range(len(order_keys[0]))])
         # formatR = "::".join(["%s" for i in range(len(order_keys[1]))])
         # xLll = [formatL % p for p in zip(*order_keys[0])]
@@ -162,11 +180,11 @@ class RowOrder(object):
         Lll = self.getAllKeysStr(0)
         Rll = self.getAllKeysStr(1)
         # Rll = ["::".join(map(str, p)) for p in zip(*order_keys[1])]
-        if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll): 
+        if len(set(Lll)) < len(Lll) or len(set(Rll)) < len(Rll):
             print('Those ids are no real ids, they are not unique!..')
 
-        Lorder= sorted(range(len(Lll)), key=Lll.__getitem__)
-        Rorder= sorted(range(len(Rll)), key=Rll.__getitem__)
+        Lorder = sorted(range(len(Lll)), key=Lll.__getitem__)
+        Rorder = sorted(range(len(Rll)), key=Rll.__getitem__)
         both = set(Lll).intersection(Rll)
         if len(both) == 0:
             raise CSVRError('Error while parsing the data, found no matching rows!')
@@ -185,18 +203,21 @@ class RowOrder(object):
             else:
                 i += 1
         return Lorder, Rorder
-        
+
 
 def start_out(fp):
-    return csv.writer(fp, quoting=csv.QUOTE_MINIMAL) #, delimiter=';', quotechar='"'
+    return csv.writer(fp, quoting=csv.QUOTE_MINIMAL)  # , delimiter=';', quotechar='"'
     # return csv.writer(fp, quoting=csv.QUOTE_NONNUMERIC) #, delimiter=';', quotechar='"'
+
+
 def write_row(csvf, row_data):
     csvf.writerow(row_data)
+
 
 def getFp(filename, write=False):
     fcl = False
     f = None
-    if type(filename) is str: # or type(filename) is unicode:
+    if type(filename) is str:  # or type(filename) is unicode:
         if write:
             f = open(filename, 'w')
         else:
@@ -209,7 +230,8 @@ def getFp(filename, write=False):
     #     ### Because ZIPext files don't have a seek method...
     #     f = io.StringIO(filename.read())
     return f, fcl
-    
+
+
 def read_coords_csv(filename, csv_params={}, unknown_string=None):
     coords = []
     rnames = None
@@ -221,11 +243,11 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
             dialect = "excel"
         f.seek(0)
         #header = csv.Sniffer().has_header(f.read(2048))
-        #f.seek(0)
+        # f.seek(0)
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
-        ### Try to read headers
+        # Try to read headers
         head = [h for h in next(csvreader)]
-       
+
         cpos = {}
         for i, h in enumerate(head):
             for clbls in [LATITUDE, LONGITUDE, IDENTIFIERS]:
@@ -237,13 +259,13 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
         cmax = max(cpos.values())
         if IDENTIFIERS[0] in cpos:
             rnames = []
-            
+
         for row in csvreader:
             if re.match("\s*#", row[0]) or row[0] in ENABLED_ROWS+ENABLED_COLS+GROUPS_COLS:
                 continue
             if len(row) < cmax+1:
-                raise ValueError('number of columns does not match (is '+
-                                 str(len(row))+', should be at least'+
+                raise ValueError('number of columns does not match (is ' +
+                                 str(len(row))+', should be at least' +
                                  str(cmax+1)+')')
             coords.append((float(row[cpos[LONGITUDE[0]]].strip()), float(row[cpos[LATITUDE[0]]].strip())))
             # coords.append((float(row[cpos[LATITUDE[0]]].strip()), float(row[cpos[LONGITUDE[0]]].strip())))
@@ -252,11 +274,13 @@ def read_coords_csv(filename, csv_params={}, unknown_string=None):
                 if tmp != type(tmp)(unknown_string):
                     rnames.append(tmp)
                 else:
-                    rnames.append(None)        
+                    rnames.append(None)
     if fcl:
         f.close()
-    ## HERE DEBUG UTF-8
+    # HERE DEBUG UTF-8
     return coords, rnames
+
+
 def write_coords_csv(filename, coords, rnames=None, csv_params={}, unknown_string=None):
     f, fcl = getFp(filename, write=True)
     if f is not None:
@@ -284,9 +308,9 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             dialect = "excel"
         f.seek(0)
         #header = csv.Sniffer().has_header(f.read(2048))
-        #f.seek(0)
+        # f.seek(0)
         csvreader = csv.reader(f, dialect=dialect, **csv_params)
-        ### Try to read headers
+        # Try to read headers
         head = [h for h in next(csvreader)]
 
         tmp = re.search('#*\s*"?type=(?P<type>\w)"?', head[-1])
@@ -299,7 +323,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                 head = [h for h in next(csvreader)]
                 skipfirst = True
         if test_some_numbers(head):
-            ### If we read a row with some numerical values, this was no header...
+            # If we read a row with some numerical values, this was no header...
             head = [Term.pattVName % i for i in range(len(head))]
             data = dict(zip(head, [[] for i in range(len(head))]))
             f.seek(0)
@@ -308,7 +332,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             if tmp is not None:
                 head.pop()
                 type_all = tmp.group('type')
-            data = dict([(head[i].strip(),[]) for i in range(len(head))])
+            data = dict([(head[i].strip(), []) for i in range(len(head))])
             if len(data) != len(head):
                 map_names = {}
                 for i in range(len(head)):
@@ -317,7 +341,7 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                         head[i] += "(duplicate#%d)" % (len(map_names[head[i]]))
                     else:
                         map_names[head[i]] = [i]
-                data = dict([(head[i].strip(),[]) for i in range(len(head))])
+                data = dict([(head[i].strip(), []) for i in range(len(head))])
                 #raise ValueError('some columns have the same name, this is a very bad idea...')
         no_of_columns = len(head)
         specials = {}
@@ -328,11 +352,11 @@ def read_csv(filename, csv_params={}, unknown_string=None):
             if re.match("\s*#", row[0]):
                 continue
             if len(row) == no_of_columns+1 and ((row[0] in GROUPS_COLS) or (row[0] in ENABLED_COLS)):
-                ### these would be for data not including ids
+                # these would be for data not including ids
                 specials[row.pop(0)] = len(first_value(data))
             if len(row) != no_of_columns:
-                raise ValueError('number of columns does not match (is '+
-                                 str(len(row))+', should be '+
+                raise ValueError('number of columns does not match (is ' +
+                                 str(len(row))+', should be ' +
                                  str(no_of_columns)+')')
             for i in range(len(row)):
                 tmp = row[i].strip()
@@ -340,15 +364,16 @@ def read_csv(filename, csv_params={}, unknown_string=None):
                     data[head[i]].append(tmp)
                 else:
                     # print("Turned to None (in csv_reader)", tmp)
-                    data[head[i]].append(None)        
+                    data[head[i]].append(None)
     if fcl:
         f.close()
     return head, data, type_all, specials
 
+
 def parse_sparse(D, coord, ids, varcol, valcol, off=None):
     nids = None
     if varcol is None:
-        ## this is no sparse data...
+        # this is no sparse data...
         return D, coord, ids, False, False
     else:
         nll = sorted(set(ids))
@@ -359,33 +384,33 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         numerical_ids = True
         col_names = None
         row_named = False
-        col_enabled = {} #None
-        col_group = {} #None
+        col_enabled = {}  # None
+        col_group = {}  # None
         sub = 1
-        
+
         if valcol is not None and "-1" in nll:
-            ### contains indexed column names
+            # contains indexed column names
             nll.remove("-1")
             col_names = {}
-            
+
         if off is not None:
             if off+1 == len(nll):
                 sub = 0
             else:
                 sub = off
-            
+
         for i in nll:
-            ### in general if numerical ids are provided that should be the row number
-            ### we expect rows to start at one ...
+            # in general if numerical ids are provided that should be the row number
+            # we expect rows to start at one ...
             e = False
             try:
                 dictLL[i] = int(i)-sub
             except ValueError as e:
                 e = True
             if dictLL[i] < 0 or e:
-                if i in ENABLED_COLS: # and col_names is not None:
+                if i in ENABLED_COLS:  # and col_names is not None:
                     col_enabled = {}
-                elif i in GROUPS_COLS: # and col_names is not None:
+                elif i in GROUPS_COLS:  # and col_names is not None:
                     col_group = {}
                 else:
                     numerical_ids = False
@@ -393,28 +418,28 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
 
         if numerical_ids:
             if off is None and (-sub in dictLL.values()):
-                ### ... unless there was a zero
-                dictLL = dict([(k,v+sub) for (k, v) in dictLL.items()])
+                # ... unless there was a zero
+                dictLL = dict([(k, v+sub) for (k, v) in dictLL.items()])
             # if max(dictLL.values()) > 2*len(dictLL):
             if max(dictLL.values()) > 10*len(dictLL):
                 print("Too large ids compared to number of rows (>10x)!...")
                 numerical_ids = False
-        if numerical_ids:        
+        if numerical_ids:
             nll = [Term.pattVName % v for v in range(max(dictLL.values())+1)]
             nids = nll
         if not numerical_ids:
-            ### if the ids are not numerical
+            # if the ids are not numerical
             row_named = True
-            dictLL = dict([(v,k) for (k,v) in enumerate(nll)])
+            dictLL = dict([(v, k) for (k, v) in enumerate(nll)])
             if ids is not None:
                 nids = [None for i in range(len(nll))]
                 for ii, i in enumerate(ids):
                     nids[dictLL[ids[ii]]] = i
-                    
-    nD = {'data' : {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: {}, GROUPS_COLS[0]: {}}
+
+    nD = {'data': {}, 'headers': [], "sparse": True, "bool": False, ENABLED_COLS[0]: {}, GROUPS_COLS[0]: {}}
     if valcol is None:
         nD['bool'] = True
-        ### Turning the data from list of ids to sets, Boolean
+        # Turning the data from list of ids to sets, Boolean
         for rid, col in enumerate(D['data'][varcol]):
             if col in nD['headers']:
                 nD['data'][col].add(dictLL[ids[rid]])
@@ -422,10 +447,10 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 nD['headers'].append(col)
                 nD['data'][col] = set([dictLL[ids[rid]]])
     else:
-        ### Turning the data from list to dict row:value
+        # Turning the data from list to dict row:value
         for rid, col in enumerate(D['data'][varcol]):
             if ids[rid] == "-1" and col_names is not None:
-                ### retrieving columns names
+                # retrieving columns names
                 col_names[col] = D['data'][valcol][rid]
             elif ids[rid] in ENABLED_COLS:
                 col_enabled[col] = D['data'][valcol][rid]
@@ -437,7 +462,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
                 nD['headers'].append(col)
                 nD['data'][col] = {dictLL[ids[rid]]: D['data'][valcol][rid]}
 
-    ### Retrieving names if any (column/row with index -1)        
+    # Retrieving names if any (column/row with index -1)
     # if contains_row_names:
     if "-1" in nD["headers"]:
         row_named = True
@@ -445,15 +470,15 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         nids = [None for i in range(len(nll))]
         for ii, i in nD["data"].pop("-1").items():
             nids[ii] = i
-                
+
     if col_names is not None:
         new_headers = []
         keysc = sorted(col_names.keys(), key=lambda x: int(x))
 
         if col_enabled is not None:
-            col_enabled = dict([(col_names.get(str(c), c), v) for (c,v) in col_enabled.items()])
+            col_enabled = dict([(col_names.get(str(c), c), v) for (c, v) in col_enabled.items()])
         if col_group is not None:
-            col_group = dict([(col_names.get(str(c), c), v) for (c,v) in col_group.items()])
+            col_group = dict([(col_names.get(str(c), c), v) for (c, v) in col_group.items()])
 
         for ko in keysc:
             cn = col_names[ko]
@@ -467,7 +492,7 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
 
     nD[ENABLED_COLS[0]] = col_enabled
     nD[GROUPS_COLS[0]] = col_group
-    ### mapping the coordinates to the correct order
+    # mapping the coordinates to the correct order
     ncoord = None
     hasc, coord_sp = has_coord_sparse(nD)
     if coord is not None and coord != (None, None):
@@ -475,19 +500,20 @@ def parse_sparse(D, coord, ids, varcol, valcol, off=None):
         for ii in range(len(coord[0])):
             ncoord[0][dictLL[ids[ii]]] = coord[0][ii]
             ncoord[1][dictLL[ids[ii]]] = coord[1][ii]
-            if hasc and ( ( coord_sp[0].get(dictLL[ids[ii]]) != ncoord[0][dictLL[ids[ii]]] or
-                            coord_sp[1].get(dictLL[ids[ii]]) != ncoord[1][dictLL[ids[ii]]]) ):
+            if hasc and ((coord_sp[0].get(dictLL[ids[ii]]) != ncoord[0][dictLL[ids[ii]]] or
+                          coord_sp[1].get(dictLL[ids[ii]]) != ncoord[1][dictLL[ids[ii]]])):
                 raise CSVRError('Found incoherent coordinates! #%d sparse (%s, %s) vs. previous (%s, %s)'
-                                % ( dictLL[ids[ii]],
+                                % (dictLL[ids[ii]],
                                     coord_sp[0].get(dictLL[ids[ii]]), coord_sp[1].get(dictLL[ids[ii]]),
                                     ncoord[0][dictLL[ids[ii]]], ncoord[1][dictLL[ids[ii]]]))
     elif hasc:
-        ncoord = [[coord_sp[0].get(i,None) for i in range(len(dictLL))], [coord_sp[1].get(i,None) for i in range(len(dictLL))]]
+        ncoord = [[coord_sp[0].get(i, None) for i in range(len(dictLL))], [coord_sp[1].get(i, None) for i in range(len(dictLL))]]
 
     return nD, ncoord, nids, hasc, row_named
 
+
 def has_disabled_rows(D):
-    #### This is taken care of in the Data class
+    # This is taken care of in the Data class
     hasDis = False
     dis = []
     for s in ENABLED_ROWS:
@@ -508,8 +534,8 @@ def has_coord(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = ( [list(map(float, (p or "-361").strip(" :").split(":"))) for p in D['data'][s]],
-                              [list(map(float, (p or "-361").strip(" :").split(":"))) for p in D['data'][t]])
+                    coord = ([list(map(float, (p or "-361").strip(" :").split(":"))) for p in D['data'][s]],
+                             [list(map(float, (p or "-361").strip(" :").split(":"))) for p in D['data'][t]])
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -520,6 +546,7 @@ def has_coord(D):
 
     return (hasCoord, coord)
 
+
 def has_coord_sparse(D):
     hasCoord = False
     coord = (None, None)
@@ -528,8 +555,8 @@ def has_coord_sparse(D):
             for t in LONGITUDE:
                 if t in D['headers']:
                     hasCoord = True
-                    coord = (dict([(k, list(map(float, (v or "-361").strip(" :").split(":")))) for (k,v) in D['data'][s].items()]),
-                             dict([(k, list(map(float, (v or "-361").strip(" :").split(":")))) for (k,v) in D['data'][t].items()]))
+                    coord = (dict([(k, list(map(float, (v or "-361").strip(" :").split(":")))) for (k, v) in D['data'][s].items()]),
+                             dict([(k, list(map(float, (v or "-361").strip(" :").split(":")))) for (k, v) in D['data'][t].items()]))
                     del D['data'][s]
                     del D['data'][t]
                     D['headers'].remove(s)
@@ -553,9 +580,10 @@ def has_ids(D):
             break
     return (hasIds, ids)
 
+
 def has_condition(D, other_params={}):
     date_fmt = {}
-    for t,f in [("time_yearfirst", "yearfirst"), ("time_dayfirst", "dayfirst")]:
+    for t, f in [("time_yearfirst", "yearfirst"), ("time_dayfirst", "dayfirst")]:
         if other_params.get(t) is not None:
             date_fmt[f] = other_params.get(t)
     col = None
@@ -578,6 +606,7 @@ def has_condition(D, other_params={}):
             break
     return (col, condIds, isTime)
 
+
 def get_discol(D, ids):
     discol = {}
     for s in ENABLED_COLS:
@@ -592,6 +621,7 @@ def get_discol(D, ids):
             break
     return discol
 
+
 def get_groupcol(D, ids):
     groupcol = {}
     for s in GROUPS_COLS:
@@ -605,6 +635,7 @@ def get_groupcol(D, ids):
                 groupcol[c] = D['data'][c].pop(p)
             break
     return groupcol
+
 
 def is_sparse(D):
     colid = list(COLVAR)
@@ -622,6 +653,7 @@ def is_sparse(D):
             valcol = s
             colv = []
     return varcol, valcol
+
 
 def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
     rtn = None
@@ -642,7 +674,7 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
                 rtn = (nb_rowsL, 0, 1)
             else:
                 rtn = (None, nb_rowsL, nrMaxR)
-                
+
     else:
         tt = []
         for t in set(Lids):
@@ -684,9 +716,10 @@ def get_size_hint(L, Lids, Lfull, R, Rids, Rfull):
             else:
                 rtn = (None, nrMaxL, nrMaxR)
     return rtn
-    
+
+
 def row_order(L, R, other_params={}):
-    ### TODO catch the dense row containing info on enabled columns
+    # TODO catch the dense row containing info on enabled columns
     (LhasIds, Lids) = has_ids(L)
     (RhasIds, Rids) = has_ids(R)
     (Lvarcol, Lvalcol) = is_sparse(L)
@@ -718,26 +751,25 @@ def row_order(L, R, other_params={}):
             RhasIds = True
             Rids = RcondIds
 
-
     (LhasCoord, Lcoord) = has_coord(L)
     (RhasCoord, Rcoord) = has_coord(R)
 
     nbr, offL, offR = get_size_hint(L, Lids, Lvarcol is None, R, Rids, Rvarcol is None)
-    #### if sizes don't match and either file had not header and could be sparse, try it...
+    # if sizes don't match and either file had not header and could be sparse, try it...
     if nbr is None and not (LhasIds and RhasIds):
         sLids, sRids = (None, None)
         nbr_SF, nbr_FS, nbr_SS = (None, None, None)
-        if not LhasIds and Lvarcol is None and len(L["headers"]) in [2,3]:
+        if not LhasIds and Lvarcol is None and len(L["headers"]) in [2, 3]:
             sLids = L["data"][L["headers"][0]]
             nbr_SF, offL_SF, offR_SF = get_size_hint(L, sLids, False, R, Rids, Rvarcol is None)
-            
-        if not RhasIds and Rvarcol is None and len(R["headers"]) in [2,3]:
+
+        if not RhasIds and Rvarcol is None and len(R["headers"]) in [2, 3]:
             sRids = R["data"][R["headers"][0]]
             nbr_FS, offL_FS, offR_FS = get_size_hint(L, Lids, Lvarcol is None, R, sRids, False)
 
             if sLids is not None:
                 nbr_SS, offL_SS, offR_SS = get_size_hint(L, sLids, False, R, sRids, False)
-            
+
         if (nbr_SF or nbr_SS) is not None:
             idsv = L["headers"].pop(0)
             LhasIds = True
@@ -755,13 +787,13 @@ def row_order(L, R, other_params={}):
 
         nbrTT, offLTT, offRTT = get_size_hint(L, Lids, Lvarcol is None, R, Rids, Rvarcol is None)
         if nbrTT is None and not (LhasIds and RhasIds):
-            raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (offL, offR))            
+            raise CSVRError('The two data sets are not of same size (%d ~ %d)' % (offL, offR))
         else:
             nbr, offL, offR = (nbrTT, offLTT, offRTT)
 
-    #### Sparse pairs storing with empty first row on sparse side
-    if LhasIds and Lvarcol is not None: 
-        #if True:
+    # Sparse pairs storing with empty first row on sparse side
+    if LhasIds and Lvarcol is not None:
+        # if True:
         try:
             L, Lcoord, Lids, LhasCoord_sp, LhasIds = parse_sparse(L, Lcoord, Lids, Lvarcol, Lvalcol, offL)
             LhasCoord |= LhasCoord_sp
@@ -769,18 +801,18 @@ def row_order(L, R, other_params={}):
             raise CSVRError('Error while trying to parse sparse left hand side: %s' % arg)
 
     if RhasIds and Rvarcol is not None:
-        try:            
+        try:
             R, Rcoord, Rids, RhasCoord_sp, RhasIds = parse_sparse(R, Rcoord, Rids, Rvarcol, Rvalcol, offR)
             RhasCoord |= RhasCoord_sp
-        except IOError as arg: #Exception as arg:
+        except IOError as arg:  # Exception as arg:
             raise CSVRError('Error while trying to parse sparse right hand side: %s' % arg)
 
     ro = RowOrder(LhasIds, RhasIds, Lids, Rids,
-                             LisTime, RisTime, Lcond_col, Rcond_col,
-                             LhasCoord, RhasCoord, Lcoord, Rcoord)
+                  LisTime, RisTime, Lcond_col, Rcond_col,
+                  LhasCoord, RhasCoord, Lcoord, Rcoord)
     if ro.hasOrders():
         Lorder, Rorder = ro.getOrders()
-                
+
         coord = None
         try:
             # Order Lcoord according to Lorder
@@ -800,7 +832,7 @@ def row_order(L, R, other_params={}):
         except Exception as arg:
             raise CSVRError('Error while trying to get the ids of data: %s' % arg)
 
-        # LDis = has_disabled_rows(L) 
+        # LDis = has_disabled_rows(L)
         # RDis = has_disabled_rows(R)
 
         cond_col = None
@@ -819,26 +851,26 @@ def row_order(L, R, other_params={}):
         return (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime)
 
     else:
-    # if not (LhasCoord or RhasCoord):
-    #     # Neither has coordinates
-    #     raise ValueError('At least one data file must have coordinates')
-    # elif not (LhasCoord and RhasCoord):
+        # if not (LhasCoord or RhasCoord):
+        #     # Neither has coordinates
+        #     raise ValueError('At least one data file must have coordinates')
+        # elif not (LhasCoord and RhasCoord):
         # Only one has coordinates (or none), do not re-order rows
-            #####TODO HERE PARSE SPARSE ALSO WITHOUT IDS ON BOTH SIDES
-        if Lids is not None: ### e.g. from sparse
+        # TODO HERE PARSE SPARSE ALSO WITHOUT IDS ON BOTH SIDES
+        if Lids is not None:  # e.g. from sparse
             nbrowsL = len(Lids)
         else:
             nbrowsL = len(first_value(L["data"]))
 
-        if Rids is not None: ### e.g. from sparse
+        if Rids is not None:  # e.g. from sparse
             nbrowsR = len(Rids)
         else:
             nbrowsR = len(first_value(R["data"]))
-            
+
         # Sanity check
         if nbrowsR != nbrowsL:
             raise CSVRError('The two data sets without mapping ids are not of same size')
-            
+
         data = L['data']
         head = L['headers']
         # extract the coordinates
@@ -860,21 +892,22 @@ def row_order(L, R, other_params={}):
             CisTime = False
 
         ids = None
-        if LhasIds: # and len(L["data"].values()[0]) == len(Lids):
+        if LhasIds:  # and len(L["data"].values()[0]) == len(Lids):
             ids = Lids
-        elif RhasIds: # and if len(R["data"].values()[0]) == len(Rids):
+        elif RhasIds:  # and if len(R["data"].values()[0]) == len(Rids):
             ids = Rids
 
-        # LDis = has_disabled_rows(L) 
+        # LDis = has_disabled_rows(L)
         # RDis = has_disabled_rows(R)
 
         return (L, R, range(nbrowsL), range(nbrowsR), coord, ids, cond_col, CisTime)
 
+
 def row_order_single(L, other_params={}):
-    ### TODO catch the dense row containing info on enabled columns
+    # TODO catch the dense row containing info on enabled columns
     (LhasIds, Lids) = has_ids(L)
     (Lvarcol, Lvalcol) = is_sparse(L)
-     
+
     if Lvarcol is None:
         if LhasIds:
             L[ENABLED_COLS[0]] = get_discol(L, Lids)
@@ -882,7 +915,7 @@ def row_order_single(L, other_params={}):
         elif len(L["specials"]) > 0:
             L[ENABLED_COLS[0]] = get_discol(L, L["specials"])
             L[GROUPS_COLS[0]] = get_groupcol(L, L["specials"])
-     
+
     (Lcond_col, LcondIds, LisTime) = has_condition(L, other_params)
     if LcondIds is not None and not LhasIds:
         LhasIds = True
@@ -890,9 +923,9 @@ def row_order_single(L, other_params={}):
 
     (LhasCoord, Lcoord) = has_coord(L)
 
-    if LhasIds and Lvarcol is not None: 
+    if LhasIds and Lvarcol is not None:
         if True:
-#        try:
+            #        try:
             L, Lcoord, Lids, LhasCoord_sp, LhasIds = parse_sparse(L, Lcoord, Lids, Lvarcol, Lvalcol)
             LhasCoord |= LhasCoord_sp
         # except Exception as arg:
@@ -914,13 +947,13 @@ def row_order_single(L, other_params={}):
         return (L, range(len(ids)), coord, ids, cond_col, CisTime)
 
     else:
-    # if not (LhasCoord or RhasCoord):
-    #     # Neither has coordinates
-    #     raise ValueError('At least one data file must have coordinates')
-    # elif not (LhasCoord and RhasCoord):
+        # if not (LhasCoord or RhasCoord):
+        #     # Neither has coordinates
+        #     raise ValueError('At least one data file must have coordinates')
+        # elif not (LhasCoord and RhasCoord):
         # Only one has coordinates (or none), do not re-order rows
-            #####TODO HERE PARSE SPARSE ALSO WITHOUT IDS ON BOTH SIDES
-        if Lids is not None: ### e.g. from sparse
+        # TODO HERE PARSE SPARSE ALSO WITHOUT IDS ON BOTH SIDES
+        if Lids is not None:  # e.g. from sparse
             nbrowsL = len(Lids)
         else:
             nbrowsL = len(first_value(L["data"]))
@@ -933,7 +966,7 @@ def row_order_single(L, other_params={}):
         else:
             coord = None
 
-        if LhasIds: # and len(L["data"].values()[0]) == len(Lids):
+        if LhasIds:  # and len(L["data"].values()[0]) == len(Lids):
             ids = Lids
         else:
             ids = None
@@ -945,9 +978,10 @@ def row_order_single(L, other_params={}):
             cond_col = None
             CisTime = False
 
-        ## LDis = has_disabled_rows(L) 
+        ## LDis = has_disabled_rows(L)
 
         return (L, range(nbrowsL), coord, ids, cond_col, CisTime)
+
 
 def readTransCSV(trans_filename, csv_params={}, other_params={}):
     unknown_string = other_params.get("NA_str", NA_str_c)
@@ -956,8 +990,9 @@ def readTransCSV(trans_filename, csv_params={}, other_params={}):
 
     (T, Torder, coord, ids, cond_col, CisTime) = row_order_single(T, other_params)
     T['order'] = Torder
-    T["type_all"]= Ttype
+    T["type_all"] = Ttype
     return T, ids
+
 
 def importCSV(left_filename, right_filename, csv_params={}, other_params={}):
     single_dataset = (left_filename == right_filename) or (right_filename is None)
@@ -973,7 +1008,7 @@ def importCSV(left_filename, right_filename, csv_params={}, other_params={}):
     if single_dataset:
         (L, Lorder, coord, ids, cond_col, CisTime) = row_order_single(L, other_params)
         L['order'] = Lorder
-        L["type_all"]= Ltype
+        L["type_all"] = Ltype
         R = None
     else:
         try:
@@ -986,10 +1021,11 @@ def importCSV(left_filename, right_filename, csv_params={}, other_params={}):
         (L, R, Lorder, Rorder, coord, ids, cond_col, CisTime) = row_order(L, R, other_params)
         L['order'] = Lorder
         R['order'] = Rorder
-        L["type_all"]= Ltype
-        R["type_all"]= Rtype
+        L["type_all"] = Ltype
+        R["type_all"] = Rtype
 
-    return {'data': (L,R), 'coord': coord, "ids": ids, 'cond_col': cond_col, "c_time": CisTime}, single_dataset, unknown_string
+    return {'data': (L, R), 'coord': coord, "ids": ids, 'cond_col': cond_col, "c_time": CisTime}, single_dataset, unknown_string
+
 
 def print_out(data):
     keysL = sorted(data['data'][0]['headers'])
@@ -1012,7 +1048,7 @@ def print_out(data):
     line += "; ".join(["%s" % k for k in keysR])
     line += " |"
     print(line)
-    
+
     for row in range(len(data['data'][0]['order'])):
         line = "%d; " % row
         if data['ids'] is not None:
@@ -1041,10 +1077,12 @@ def print_out(data):
         line += " |"
         print(line)
 
-def main(argv=[]):    
+
+def main(argv=[]):
     rep = "/home/egalbrun/short/raja_small/"
     res, single, unknown_str = importCSV(rep+"data_RHSk.csv", rep+"data_RHSo.csv")
     print_out(res)
+
 
 if __name__ == '__main__':
     main(sys.argv)
