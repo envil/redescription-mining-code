@@ -22,7 +22,7 @@ class MapBase:
 
     marg_f = 100.0
     proj_def = "mill"
-    proj_names = {"None": None,
+    proj_names = {"none": None,
                   "Gnomonic": "gnom",
                   "Mollweide": "moll",
                   "Gall Stereographic Cylindrical": "gall",

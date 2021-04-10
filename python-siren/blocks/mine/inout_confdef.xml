@@ -235,9 +235,9 @@
     </section>
   </section>
   <section>
-    <name>Extra</name>
+    <name>Advanced</name>
     <section>
-      <name>Extra</name>
+      <name>File Names</name>
       <parameter>
         <name>series_id</name>
         <label>Series ID</label>
@@ -280,6 +280,9 @@
           <value/>
         </default>
       </parameter>
+    </section>
+    <section>
+      <name>Extra</name>
       <parameter>
         <name>mask_vars_LHS</name>
         <label>Mask for LHS variables</label>
@@ -321,7 +324,7 @@
         <legend>Data extensions to activate.</legend>
         <default>0</default>
         <options>
-          <value>[AUTO]</value>
+          <value>(auto)</value>
           <value>geoplus</value>
         </options>
       </parameter>

@@ -1,13 +1,12 @@
 import argparse
+import glob
 import re
 import os.path
 import sys
 try:
     import toolXML
-    import toolICDict
 except ModuleNotFoundError:
     from . import toolXML
-    from . import toolICDict
 import pdb
 
 USAGE_DEF_HEADER = "Clired redescription mining"
@@ -272,6 +271,9 @@ class CParameter(object):
         self._value_type = value_type
         self._pfr = None
 
+    def hasOptions(self):
+        return False
+
     def getCardinality(self):
         return "unique"
 
@@ -288,6 +290,9 @@ class CParameter(object):
         if sep is None:
             return self._prf[from_pos:]
         return sep.join(self._prf[from_pos:])
+
+    def getConfDef(self):
+        return self._prf[0]
 
     def suppress(self, only_core=False, only_sections=None, suppress_sections=None):
         if only_core and not self.isCore():
@@ -313,6 +318,9 @@ class CParameter(object):
 
     def textToIndex(self, txt):
         return None
+
+    def getTypeStr(self):
+        return self.type_str
 
     def getTypeDets(self):
         return self.type_str
@@ -372,6 +380,9 @@ class CParameter(object):
 
     def getDefaultText(self):
         return self.valToText(self._default)
+
+    def getDefaultStr(self):
+        return self.getDefaultText()
 
     # PARAM
     def getParamValue(self, raw_value):
@@ -457,6 +468,9 @@ class SingleOptionsCParameter(CParameter):
         CParameter.__init__(self, name, label, default, value_type, legend)
         self._options = options
 
+    def hasOptions(self):
+        return True
+
     def parseNode(self, node):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("options")
@@ -469,7 +483,7 @@ class SingleOptionsCParameter(CParameter):
             raise Exception("Default value for param %s not among options!" % self._name)
 
     def getTypeDets(self):
-        return "%s in {%s}" % (self.type_str, ",".join(self.getOptionsText()))
+        return "%s in {%s}" % (self.type_str, ", ".join(self.getOptionsText()))
 
     def getArgparseBase(self):
         kargs = CParameter.getArgparseBase(self)
@@ -544,6 +558,9 @@ class BooleanCParameter(SingleOptionsCParameter):
         CParameter.__init__(self, name, label, default, value_type, legend)
         self._options = self.opts_data
 
+    def hasOptions(self):
+        return False
+
     def parseNode(self, node):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("default")
@@ -575,6 +592,9 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
     def getCardinality(self):
         return "multiple"
 
+    def hasOptions(self):
+        return True
+
     def parseNode(self, node):
         CParameter.parseNode(self, node)
         et = node.getElementsByTagName("options")
@@ -603,7 +623,11 @@ class MultipleOptionsCParameter(SingleOptionsCParameter):
     def getDefaultText(self):
         return [self.valToText(self._options[i]) for i in self._default]
 
+    def getDefaultStr(self):
+        return "{" + ", ".join(self.getDefaultText()) + "}"
+
     # PARAM
+
     def getParamValue(self, raw_value):
         vs = set()
         for v in raw_value:
@@ -882,7 +906,9 @@ class PreferencesManager(object):
                                                    only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections))
         return items
 
-    def collectParameters(self, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+    def collectParameters(self, conf_filter=None, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+        if only_sections is None and suppress_sections is None:
+            only_sections = self.getConfDefSections(conf_filter)
         items = []
         for subsection in self.subsections:
             items.extend(self.collectParametersRec(subsection, sections,
@@ -921,7 +947,7 @@ class PreferencesReader(argparse.ArgumentParser):
             self.add_argument("--task", type=str, choices=choices_task, default=default_task, help="task to perform")
 
         g = self
-        for (item_id, item) in pm.collectParameters():
+        for (item_id, item) in self.collectParameters():
             if item_id == "[section]":
                 g = self.add_argument_group(":".join(item[1:]))  # drop file src
             else:
@@ -941,8 +967,34 @@ class PreferencesReader(argparse.ArgumentParser):
         return self.getManager().dispParameters(pv=pv, conf_filter=conf_filter, sections=sections, helps=helps, defaults=defaults,
                                                 only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
 
-    def collectParameters(self, sections=True, only_core=False, only_sections=None, suppress_sections=None):
-        return self.getManager().collectParameters(sections=sections, only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
+    def collectParameters(self, conf_filter=None, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+        return self.getManager().collectParameters(conf_filter=conf_filter, sections=sections, only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
+
+    def dispRST(self, conf_filter=None, sections=True, helps=True, defaults=True, only_core=False, only_sections=None, suppress_sections=None):
+        rst = ""
+        for (item_id, item) in self.collectParameters(conf_filter=conf_filter, sections=sections, only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections):
+            if item_id == "[section]":
+                rst += "\n.. rubric:: %s\n" % ": ".join(item[1:])
+                # rst += "\n%s\n%s\n\n%s (%s)\n" % (item[-1], "-"*len(item[-1]), " ".join(item[1:-1]), item[0])
+            else:
+                rst += "\n.. cparam:: %s" % item.getName()
+                if item.isCore():
+                    rst += "\n    :core:"
+                rst += "\n    :label: %s" % item.getLabel()
+                rst += "\n    :conf_def: %s" % item.getConfDef()
+                rst += "\n    :path: %s" % item.getPath(sep=", ")
+                rst += "\n    :type: %s" % item.getTypeStr()
+                if item.hasOptions():
+                    rst += "\n    :choices: " + ", ".join(item.getOptionsText())
+                if helps:
+                    rst += "\n\n    * " + item.getLegend()
+                    rst += "\n    * " + item.getTypeDets()
+                if defaults:
+                    rst += "\n    * default: " + item.getDefaultStr()
+                if helps:
+                    rst += "\n    * %s" % item.getConfDef()
+                rst += "\n"
+        return rst
 
     def format_help(self, only_core=True, only_sections=None, suppress_sections=None):
         CAction.only_core = only_core
@@ -953,7 +1005,7 @@ class PreferencesReader(argparse.ArgumentParser):
     def processHelp(self, params, conf_filter=None):
         if params.get("usage", False):
             return self.format_usage()
-        if params.get("template"):
+        elif params.get("template"):
             return self.getManager().dispParameters(pv=params, conf_filter=conf_filter, sections=False, helps=True, defaults=False, only_core=True)
         elif params.get("config"):
             return self.getManager().dispParameters(pv=None, conf_filter=conf_filter, sections=True, helps=True, defaults=True, only_core=False)
@@ -1119,10 +1171,50 @@ def getPreferencesReader(conf_defs=None, tasks=[], tasks_default=None, descripti
     return PreferencesReader(getPreferencesManager(conf_defs), tasks, tasks_default, description, epilog)
 
 
+def fillParamsDocRST(paramdoc_file_in, conf_files, conf_patt, insert_patt="^\.\. ", before_block=None, after_block=None):
+    if before_block is None:
+        before_block = []
+    if after_block is None:
+        after_block = []
+
+    pr = getPreferencesReader(conf_defs=conf_files)
+    map_files = {}
+    for filename in conf_files:
+        map_files[os.path.basename(filename)] = filename
+
+    content_lines = []
+    current_block = []
+    with open(paramdoc_file_in) as fp:
+        for line in fp:
+            tmp = re.search(insert_patt, line)
+            if tmp is not None:
+                content_lines.extend(current_block)
+                current_block = []
+            else:
+                for match in re.finditer(conf_patt, line):
+                    conf_filter = match.group("conf_filter")
+                    if conf_filter in map_files:
+                        blck = pr.dispRST(conf_filter=[conf_filter]).split("\n")
+                        if len(blck) > 0:
+                            current_block.extend(before_block)
+                            current_block.extend(blck)
+                            current_block.extend(after_block)
+                        del map_files[conf_filter]
+            content_lines.append(line.rstrip())
+
+    if len(map_files) > 0:
+        blck = pr.dispRST(conf_filter=list(map_files.keys())).split("\n")
+        if len(blck) > 0:
+            current_block.extend(before_block)
+            current_block.extend(blck)
+            current_block.extend(after_block)
+    content_lines.extend(current_block)
+
+    return content_lines
+
+
 if __name__ == "__main__":
-    import glob
-    import os.path
-    import sys
+
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     conf_defs = glob.glob(pref_dir + "/*_confdef.xml")
     pr = getPreferencesReader(conf_defs)

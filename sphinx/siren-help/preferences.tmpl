@@ -7,7 +7,10 @@ Parameters
 .. note::
    Siren allows to tune various parameters via an interface menu :menuselection:`Edit --> Preferences`.
 
-   An XML preferences file stores all non-default parameters. 
+   Non-default parameters can be stored in a preferences file, e.g. via :menuselection:`Export --> Export preferences`.
+   
+   Parameters are listed below by their label and identifier, as used respectively in the interface and in preference files, with a short explanation of the parameter, type, default value and indication of file where the parameter is defined.
+ 
 
 The parameters that can be set through the preference interface can be mainly divided into two categories, **mining parameters**, that pertain to the mining algorithm, and **visualization parameters**, that pertain to the interactive visualizations, each split over several tabs.
    
@@ -29,6 +32,7 @@ Visualization parameters
 Visualization parameters are specified `here <../_static/views_confdef.xml>`_  and can be set through the interface.
 For instance, they allows to modify the appearance of the maps, choose the colors of the different support subsets, etc.
 
+.. _other_parameters:
 
 Other parameters
 =========================
@@ -36,4 +40,4 @@ Other parameters
 It is possible to adjust the parameters through the interface then export them to a file.
 In particular, a template can be generated and exported which can be used to run the *ReReMi* mining algorithm from the command line, after filling in input/output parameters, which are specified `here. <../_static/inout_confdef.xml>`_ 
 
-Interface parameters, such as the splits and external server parameters, set through dedicated menu in the interface are specified `here <../_static/ui_confdef.xml>`_ .
+Further parameters pertain to randomization, cross-fold tests, server parameters, etc.

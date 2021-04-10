@@ -33,7 +33,7 @@ cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/_static/
 
 mkdir ${SPHINX_REP}/siren
 cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/
-cp ${SRC_REP}/blocks/common_details.py ${SPHINX_REP}/siren/
+cp ${SRC_REP}/blocks/common_details.py ${SRC_REP}/blocks/mine/toolXML.py ${SRC_REP}/blocks/mine/classPreferencesManager.py ${SPHINX_REP}/siren/
 
 ### UPDATE THE IMPORT PATH FOR COMMON VARIABLES IN SPHINX CONF FILES
 sed -i -e s:__SIREN_PYTHON_PATH__:${SPHINX_REP}/siren:g ${SPHINX_REP}/*/conf.py
@@ -70,11 +70,11 @@ else
     cp -r _build/html ${OUT_REP}/help
     cp _build/latex/Siren.pdf ${OUT_REP}/help/Siren-UserGuide.pdf
 
-    # #### MAKE MAIN
-    # cd ${SPHINX_REP}/siren-web/
-    # rm -rf _build
-    # make html
-    # cp -r _build/html ${OUT_REP}/main
+    #### MAKE MAIN
+    cd ${SPHINX_REP}/siren-web/
+    rm -rf _build
+    make html
+    cp -r _build/html ${OUT_REP}/main
 
     # #### MAKE CONF SPECIFIC
     # for conf in "sigmod" "icdm"; do

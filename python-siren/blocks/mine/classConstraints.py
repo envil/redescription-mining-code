@@ -58,10 +58,10 @@ class Constraints(object):
 
     def prepareValues(self, params, vals=None):
         def getNegBool(p):
-            return p == "Negative"
+            return p == "negative"
 
         def getOpsBool(p):
-            return p == "Disjunction"
+            return p == "disjunction"
 
         # preparing query types
         if vals is None:

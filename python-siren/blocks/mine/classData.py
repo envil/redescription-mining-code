@@ -96,7 +96,7 @@ class ExtensionPool(object):
         if len(ext_keys) == 0:  # prevent loading
             return
 
-        if ext_keys is None or "[AUTO]" in ext_keys:
+        if ext_keys is None or "(auto)" in ext_keys:
             if filenames is None:
                 filenames = self.getExtensionsFilesDict()
                 eks = self.extensions_map.keys()

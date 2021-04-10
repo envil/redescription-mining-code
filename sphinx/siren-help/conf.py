@@ -11,13 +11,27 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
+from datetime import datetime
 import sys
 import os
-from datetime import datetime
+import glob
+sys.path.append(os.path.abspath("../_ext"))
 sys.path.append("__SIREN_PYTHON_PATH__")
+
 from common_details import common_variables, getExtLinks
+from classPreferencesManager import fillParamsDocRST
+
 cv = common_variables
 extlinks = getExtLinks(cv)
+
+paramdoc_file_in = "./preferences.tmpl"
+paramdoc_file_out = "./preferences.rst"
+
+if not os.path.exists(paramdoc_file_out):
+    conf_files = set(glob.glob("../_static/*_confdef.xml"))
+    paramdoc_content = fillParamsDocRST(paramdoc_file_in, conf_files, "<\.\./_static/(?P<conf_filter>[^_]+_confdef.xml)>")
+    with open(paramdoc_file_out, "w") as fo:
+        fo.write("\n".join(paramdoc_content))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -31,7 +45,7 @@ extlinks = getExtLinks(cv)
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinxcontrib.bibtex', 'sphinx.ext.mathjax', 'sphinx.ext.extlinks']
+extensions = ['sphinxcontrib.bibtex', 'sphinx.ext.mathjax', 'sphinx.ext.extlinks', 'paramdoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../_templates']

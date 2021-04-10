@@ -126,7 +126,7 @@
         <label>Excluded initial cand. pair types</label>
         <parameter_type>multiple_options</parameter_type>
         <value_type>text</value_type>
-        <legend>Excluded variable types in initial pairs.</legend>
+        <legend>Excluded variable types in initial pairs. B, C and N stand for Boolean, Categorical and Numerical variables, respectively. Note order is simpler type first, not by sides.</legend>
         <default>
         </default>
         <options>
@@ -426,8 +426,8 @@
           <value>0</value>
         </default>
         <options>
-          <value>Positive</value>
-          <value>Negative</value>
+          <value>positive</value>
+          <value>negative</value>
         </options>
       </parameter>
       <parameter>
@@ -440,8 +440,8 @@
           <value>0</value>
         </default>
         <options>
-          <value>Positive</value>
-          <value>Negative</value>
+          <value>positive</value>
+          <value>negative</value>
         </options>
       </parameter>
       <parameter>
@@ -454,8 +454,8 @@
           <value>0</value>
         </default>
         <options>
-          <value>Positive</value>
-          <value>Negative</value>
+          <value>positive</value>
+          <value>negative</value>
         </options>
       </parameter>
       <parameter>
@@ -469,8 +469,8 @@
           <value>1</value>
         </default>
         <options>
-          <value>Conjunction</value>
-          <value>Disjunction</value>
+          <value>conjunction</value>
+          <value>disjunction</value>
         </options>
       </parameter>
       <parameter>
@@ -483,8 +483,8 @@
           <value>0</value>
         </default>
         <options>
-          <value>Positive</value>
-          <value>Negative</value>
+          <value>positive</value>
+          <value>negative</value>
         </options>
       </parameter>
       <parameter>
@@ -497,8 +497,8 @@
           <value>0</value>
         </default>
         <options>
-          <value>Positive</value>
-          <value>Negative</value>
+          <value>positive</value>
+          <value>negative</value>
         </options>
       </parameter>
       <parameter>
@@ -511,8 +511,8 @@
           <value>0</value>
         </default>
         <options>
-          <value>Positive</value>
-          <value>Negative</value>
+          <value>positive</value>
+          <value>negative</value>
         </options>
       </parameter>
       <parameter>
@@ -526,8 +526,8 @@
           <value>1</value>
         </default>
         <options>
-          <value>Conjunction</value>
-          <value>Disjunction</value>
+          <value>conjunction</value>
+          <value>disjunction</value>
         </options>
       </parameter>
       <parameter>

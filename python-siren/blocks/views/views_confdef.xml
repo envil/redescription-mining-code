@@ -300,9 +300,9 @@
           <value>0</value>
         </default>
         <options>
-          <value>Fractions</value>
-          <value>Percentages</value>
-          <value>Counts</value>
+          <value>fractions</value>
+          <value>percentages</value>
+          <value>counts</value>
         </options>
       </parameter>
       <parameter>
@@ -449,14 +449,14 @@
         <label>Map background</label>
         <parameter_type>single_options</parameter_type>
         <value_type>text</value_type>
-        <legend>Background to use for the map.</legend>
+        <legend>Background to use for the map (only with Basemap, not with Cartopy).</legend>
         <default>
           <value>0</value>
         </default>
         <options>
-          <value>None</value>
-          <value>Shaded relief</value>
-          <value>Etopo relief</value>
+          <value>none</value>
+          <value>shaded relief</value>
+          <value>etopo relief</value>
           <value>NASA Blue Marble</value>
         </options>
       </parameter>
@@ -526,7 +526,7 @@
           <value>7</value>
         </default>
         <options>
-          <value>None</value>
+          <value>none</value>
           <value>Plate Carree</value>
           <value>Transverse Mercator</value>
           <value>Mercator</value>
