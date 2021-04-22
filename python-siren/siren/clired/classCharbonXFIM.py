@@ -1,3 +1,4 @@
+import pickle
 from collections import defaultdict
 
 
@@ -174,7 +175,8 @@ class TIDList:
         self.lists = [{}, {}]
 
     def set_data(self, side, item, data):
-        self.lists[side][item] = data
+        if self.lists[side] is not None:
+            self.lists[side][item] = data
 
     def get_supports(self, candidate: tuple):
         side, _, _ = candidate[0] if isinstance(candidate[0], tuple) else candidate
@@ -189,9 +191,7 @@ class TIDList:
         return supps
 
 
-
-
-class CandStoreV2:
+class CandStoreMineAndPair:
     def __init__(self, setts):
         self.setts = setts
         self.store = [{}, {}]
@@ -225,6 +225,41 @@ class CandStoreV2:
         return query_store
 
 
+class CandStoreMineAndSplit:
+    def __init__(self, setts):
+        self.setts = setts
+        self.store = {}
+
+    def add(self, cand):
+        sides = set([item[0] for item in cand[0]])
+        if len(sides) < 2:
+            return
+        if ("max_var_s0" not in self.setts or len([c for c in cand[0] if c[0] == 0]) <= self.setts["max_var_s0"]) and \
+            ("max_var_s1" not in self.setts or len([c for c in cand[0] if c[0] == 1]) <= self.setts["max_var_s1"]):
+            self.store[cand[0]] = cand[1]
+
+    def getQueries(self, tid_lists: TIDList) -> list:
+        query_store = []
+        for cand, _ in self.store.items():
+            q0 = tuple([c for c in cand if c[0] == 0])
+            q1 = tuple([c for c in cand if c[0] == 1])
+            if len(q0) > 0 and len(q1) > 0:
+                s0 = tid_lists.get_supports(q0)
+                s1 = tid_lists.get_supports(q1)
+                if len(s0) == 0 or len(s1) == 0 or \
+                    ("min_fin_in" in self.setts and (len(s0) <= self.setts["min_fin_in"] or len(s1) <= self.setts["min_fin_in"])):
+                    continue
+                union_supports = s0 | s1
+                if len(union_supports) == 0:
+                    continue
+                intersection_supports = s0 & s1
+                accuracy = len(intersection_supports)/len(union_supports)
+
+                if ("min_fin_acc" not in self.setts or accuracy >= self.setts["min_fin_acc"]):
+                    query_store.append((q0, q1, s0, s1, accuracy))
+        return query_store
+
+
 class CharbonXFIM(CharbonXaust):
     name = "XaustFIM"
 
@@ -232,7 +267,8 @@ class CharbonXFIM(CharbonXaust):
         return False
 
     def computeExpansions(self, data, initial_candidates):
-        lits = self.computeExpansionsOnEachSide(data, initial_candidates)
+        lits = self.computeExpansionsMineAndPair(data, initial_candidates)
+        # lits = self.computeExpansionsMineAndSplit(data, initial_candidates)
         tracts = [[] for i in range(data.nbRows())]
         initial_candidates_map = [{}, {}]
         for i, candidate in enumerate(initial_candidates):
@@ -250,14 +286,14 @@ class CharbonXFIM(CharbonXaust):
         # maxx = zmax+1 if zmax < maxsize and target in 'cm' else zmax
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
-        min_supp = self.constraints.getCstr("min_itm_in")
+        min_supp = self.constraints.getCstr("min_fin_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
                                                                                  "min_fin_in", "min_fin_out",
                                                                                  "min_fin_acc"]])
 
         candidate_store = CandStore(candidate_store_setts)
-        r, _ = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries()
         cands = []
         for qs in queries:
@@ -268,7 +304,7 @@ class CharbonXFIM(CharbonXaust):
             cands.append(r)
         return cands
 
-    def computeExpansionsOnEachSide(self, data, initial_candidates_full):
+    def computeExpansionsMineAndPair(self, data, initial_candidates_full):
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
         min_supp = self.constraints.getCstr("min_itm_in")
@@ -276,19 +312,22 @@ class CharbonXFIM(CharbonXaust):
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
                                                                                  "min_fin_in", "min_fin_out",
                                                                                  "min_fin_acc"]])
-        candidate_store = CandStoreV2(candidate_store_setts)
+        candidate_store = CandStoreMineAndPair(candidate_store_setts)
         tid_lists = TIDList()
+        initial_candidates = [None, None]
+        initial_candidates_map = [None, None]
         for side in [0, 1]:
-            initial_candidates = [candidate[side] for candidate in initial_candidates_full if candidate[side] is not None]
+            initial_candidates[side] = [candidate[side] for candidate in initial_candidates_full
+                                        if candidate[side] is not None]
             tracts = [[] for i in range(data.nbRows())]
-            initial_candidates_map = defaultdict(list)
-            for i, candidate in enumerate(initial_candidates):
+            initial_candidates_map[side] = defaultdict(list)
+            for i, candidate in enumerate(initial_candidates[side]):
                 column_id = candidate.colId()
-                # if column_id not in initial_candidates_map:
-                #     initial_candidates_map[column_id] = []
-                k = (side, column_id, len(initial_candidates_map[column_id]))
-                initial_candidates_map[column_id].append(i)
+                k = (side, column_id, len(initial_candidates_map[side][column_id]))
+                initial_candidates_map[side][column_id].append(i)
                 tid_lists.set_data(side, k, data.supp(side, candidate))
+                for row_id in data.supp(side, candidate):
+                    tracts[row_id].append(k)
 
             tracts = [frozenset(t) for t in tracts]
 
@@ -296,7 +335,51 @@ class CharbonXFIM(CharbonXaust):
         queries = candidate_store.getQueries(tid_lists)
         lits = []
         for qs in queries:
-            lits = [initial_candidates[initial_candidates_map[q[1]][q[2]]][0] for q in qs[0]]
+            lits_s0 = [initial_candidates[q[0]][initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
+            lits_s1 = [initial_candidates[q[0]][initial_candidates_map[1][q[1]][q[2]]] for q in qs[1]]
+            query_s0 = Query(False, lits_s0)
+            query_s1 = Query(False, lits_s1)
+            r = Redescription.fromQueriesPair([query_s0, query_s1], data, copyQ=False)
+            lits.append(r)
         return lits
 
-    # def constructTIDList(self, data):
+    def computeExpansionsMineAndSplit(self, data, initial_candidates):
+        tracts = [[] for i in range(data.nbRows())]
+        initial_candidates_map = [{}, {}]
+        tid_lists = TIDList()
+        for i, candidate in enumerate(initial_candidates):
+            side = 1 if candidate[0] is None else 0
+            column_id = candidate[side].colId()
+            if column_id not in initial_candidates_map[side]:
+                initial_candidates_map[side][column_id] = []
+            k = (side, column_id, len(initial_candidates_map[side][column_id]))
+            initial_candidates_map[side][column_id].append(i)
+            supps = data.supp(side, candidate[side])
+            tid_lists.set_data(side, k, supps)
+            for row_id in supps:
+                tracts[row_id].append(k)
+        tracts = [frozenset(t) for t in tracts]
+
+        zmin = 1
+        zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
+        min_supp = self.constraints.getCstr("min_itm_in")
+
+        candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
+                                                                                 "min_fin_in", "min_fin_out",
+                                                                                 "min_fin_acc"]])
+
+        candidate_store = CandStoreMineAndSplit(candidate_store_setts)
+        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+        queries = candidate_store.getQueries(tid_lists)
+
+        with open('./tests/data/queries_v3.pickle', 'wb') as f:
+            pickle.dump(queries, f)
+        lits = []
+        for qs in queries:
+            #  could be to recover the original variables
+            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]][0] for q in qs[0]]
+            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]][1] for q in qs[1]]
+            r = Redescription.fromQueriesPair([Query(False, literals_s0), Query(False, literals_s1)], data, copyQ=False)
+            lits.append(r)
+        return lits
+
