@@ -38,7 +38,8 @@ setts    static recursion/output setts as a list
         [ target, supp, zmin, zmax, maxx, count [, out] ]"""
     if not pexs:  # if no perfect extensions (left)
         n = len(iset)  # check the item set size
-        if (n < setts[2]) or (n > setts[3]): return
+        if (n < setts[2]) or (n > setts[3]):
+            return
         store_handle((tuple(iset), supp))
     else:  # if perfect extensions to process
         report(iset + [pexs[0]], pexs[1:], supp, setts, store_handle)
@@ -116,6 +117,24 @@ setts    static recursion/output setts as a list
     return m  # return the maximum extension support
 
 
+def my_recurse(tadb, iset, pexs, setts, store_handle):
+    tadb.sort()  # sort items by (conditional) support
+    for k, (sum_transactions, item, transactions) in enumerate(tadb):  # traverse the items/item sets
+        proj = []
+        xpxs = []  # construct the projection of the
+        for r, j, u in tadb[k + 1:]:  # trans. settsbase to the current item:
+            u = u & transactions  # intersect with subsequent lists
+            r = sum([w for x, w in u])
+            if r >= sum_transactions:
+                xpxs.append(j)
+            elif r >= setts[1]:
+                proj.append([r, j, u])
+        xpxs = pexs + xpxs  # combine perfect extensions and
+        xset = iset + [item]  # add the current item to the set and
+        if proj and (len(xset) < setts[4]):
+            my_recurse(proj, xset, xpxs, setts, store_handle)
+        report(xset, xpxs, sum_transactions, setts, store_handle)
+
 # -----------------------------------------------------------------------
 
 def mod_eclat(tracts, setts, store_handle):
@@ -137,7 +156,8 @@ def mod_eclat(tracts, setts, store_handle):
     pexs = [i for s, i, t in tadb if s >= sall]
     tadb = [t for t in tadb if t[0] >= setts[1] and t[0] < sall]
 
-    r = recurse(tadb, [], [], [], setts, store_handle)
+    # r = recurse(tadb, [], [], [], setts, store_handle)
+    r = my_recurse(tadb, [], [], setts, store_handle)
     return r
 
 
@@ -325,12 +345,14 @@ class CharbonXFIM(CharbonXaust):
                 column_id = candidate.colId()
                 k = (side, column_id, len(initial_candidates_map[side][column_id]))
                 initial_candidates_map[side][column_id].append(i)
-                tid_lists.set_data(side, k, data.supp(side, candidate))
+                candidate_supp = data.supp(side, candidate)
+                if len(candidate_supp) < min_supp:
+                    continue
+                tid_lists.set_data(side, k, candidate_supp)
                 for row_id in data.supp(side, candidate):
                     tracts[row_id].append(k)
 
             tracts = [frozenset(t) for t in tracts]
-
             r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
         lits = []
