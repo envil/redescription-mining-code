@@ -220,7 +220,7 @@ class CandStoreMineAndPair:
                 intersection_supports = s0 & s1
                 accuracy = len(intersection_supports)/len(union_supports)
 
-                if ("min_fin_acc" not in self.setts or accuracy >= self.setts["min_fin_acc"]):
+                if accuracy >= self.setts.get("min_fin_acc", 0) and len(intersection_supports) >= self.setts.get('min_fin_in', 0):
                     query_store.append((lhs_cand, rhs_cand, s0, s1, accuracy))
         return query_store
 
