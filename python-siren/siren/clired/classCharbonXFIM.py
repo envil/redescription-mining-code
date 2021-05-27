@@ -183,7 +183,7 @@ class CandStore:
                 s0 = self.supps.get(q0, -1)
                 s1 = self.supps.get(q1, -1)
                 if s0 > 0 and s1 > 0 and \
-                    ("min_fin_in" not in self.setts or s01 >= self.setts["min_fin_in"]) and \
+                    ("min_itm_in" not in self.setts or s01 >= self.setts["min_itm_in"]) and \
                     ("min_fin_acc" not in self.setts or s01 / (s0 + s1 - s01) >= self.setts["min_fin_acc"]):
                     qs.append((q0, q1, s0, s1, s01))
         return qs
@@ -232,7 +232,7 @@ class CandStoreMineAndPair:
                 s0 = tid_lists.get_supports(lhs_cand)
                 s1 = tid_lists.get_supports(rhs_cand)
                 if len(s0) == 0 or len(s1) == 0 or \
-                    ("min_fin_in" in self.setts and (len(s0) <= self.setts["min_fin_in"] or len(s1) <= self.setts["min_fin_in"])):
+                    ("min_itm_in" in self.setts and (len(s0) <= self.setts["min_itm_in"] or len(s1) <= self.setts["min_itm_in"])):
                     continue
                 union_supports = s0 | s1
                 if len(union_supports) == 0:
@@ -240,7 +240,7 @@ class CandStoreMineAndPair:
                 intersection_supports = s0 & s1
                 accuracy = len(intersection_supports)/len(union_supports)
 
-                if accuracy >= self.setts.get("min_fin_acc", 0) and len(intersection_supports) >= self.setts.get('min_fin_in', 0):
+                if accuracy >= self.setts.get("min_fin_acc", 0) and len(intersection_supports) >= self.setts.get('min_itm_in', 0):
                     query_store.append((lhs_cand, rhs_cand, s0, s1, accuracy))
         return query_store
 
@@ -267,7 +267,7 @@ class CandStoreMineAndSplit:
                 s0 = tid_lists.get_supports(q0)
                 s1 = tid_lists.get_supports(q1)
                 if len(s0) == 0 or len(s1) == 0 or \
-                    ("min_fin_in" in self.setts and (len(s0) <= self.setts["min_fin_in"] or len(s1) <= self.setts["min_fin_in"])):
+                    ("min_itm_in" in self.setts and (len(s0) <= self.setts["min_itm_in"] or len(s1) <= self.setts["min_itm_in"])):
                     continue
                 union_supports = s0 | s1
                 if len(union_supports) == 0:
@@ -306,10 +306,10 @@ class CharbonXFIM(CharbonXaust):
         # maxx = zmax+1 if zmax < maxsize and target in 'cm' else zmax
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
-        min_supp = self.constraints.getCstr("min_fin_in")
+        min_supp = self.constraints.getCstr("min_itm_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
-                                                                                 "min_fin_in", "min_fin_out",
+                                                                                 "min_itm_in", "min_itm_out",
                                                                                  "min_fin_acc"]])
 
         candidate_store = CandStore(candidate_store_setts)
@@ -330,7 +330,7 @@ class CharbonXFIM(CharbonXaust):
         min_supp = self.constraints.getCstr("min_itm_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
-                                                                                 "min_fin_in", "min_fin_out",
+                                                                                 "min_itm_in", "min_itm_out",
                                                                                  "min_fin_acc"]])
         candidate_store = CandStoreMineAndPair(candidate_store_setts)
         tid_lists = TIDList()
@@ -342,14 +342,14 @@ class CharbonXFIM(CharbonXaust):
             tracts = [[] for i in range(data.nbRows())]
             initial_candidates_map[side] = defaultdict(list)
             for i, candidate in enumerate(initial_candidates[side]):
-                column_id = candidate.colId()
-                k = (side, column_id, len(initial_candidates_map[side][column_id]))
-                initial_candidates_map[side][column_id].append(i)
                 candidate_supp = data.supp(side, candidate)
                 if len(candidate_supp) < min_supp:
                     continue
+                column_id = candidate.colId()
+                k = (side, column_id, len(initial_candidates_map[side][column_id]))
+                initial_candidates_map[side][column_id].append(i)
                 tid_lists.set_data(side, k, candidate_supp)
-                for row_id in data.supp(side, candidate):
+                for row_id in candidate_supp:
                     tracts[row_id].append(k)
 
             tracts = [frozenset(t) for t in tracts]
@@ -387,7 +387,7 @@ class CharbonXFIM(CharbonXaust):
         min_supp = self.constraints.getCstr("min_itm_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
-                                                                                 "min_fin_in", "min_fin_out",
+                                                                                 "min_itm_in", "min_itm_out",
                                                                                  "min_fin_acc"]])
 
         candidate_store = CandStoreMineAndSplit(candidate_store_setts)
