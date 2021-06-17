@@ -1065,7 +1065,7 @@ class SSizes(object):
     def privatize_support(tcl, ssetts, N, supports, prs=[1, 1], budget=0):
         has_missing, lsupports = tcl.prepare_supports_sizes(supports, N)
         lsupports = [numpy.clip(round(x+numpy.random.laplace(scale=1/budget)), 0, N) for x in lsupports]
-        return tcl(ssetts, N, lsupports, prs)
+        return SSizes(ssetts, N, lsupports, prs)
 
     def copy(self):
         return SSizes(self.ssetts, self.N, self.sSizes, prs=self.prs if self.prs is None else list(self.prs))
@@ -1327,7 +1327,7 @@ class SSizes(object):
         return "SUPPORT:" + self.dispSuppL(sep=" ")
 
     def dispSuppL(self, sep="\t"):
-        return sep.join(["card_" + self.ssetts.getLabel(i)+":" + str(len(self.sParts[i])) for i in range(len(self.sParts))])
+        return sep.join(["card_" + self.ssetts.getLabel(i)+":" + str(self.lpart(i)) for i in range(self.ssetts.top+1)])
 
     def dispStats(self, sep="\t"):
         return sep.join(["%s%s:%s" % (what, which or "", self.getProp(what, which)) for (what, which) in self.props_stats])

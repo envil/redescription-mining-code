@@ -92,6 +92,9 @@ class DrawerBasis(object):
         vec_dets = self.getPltDtH().getVecDets(inter_params)
         return vec, vec_dets
 
+    def shortcut(self, axe, vec, draw_settings):
+        pass
+
     def update(self, more=None):
         if self.view.wasKilled():
             return
@@ -103,6 +106,7 @@ class DrawerBasis(object):
             inter_params = self.getParamsInter()
             vec, vec_dets = self.getVecAndDets(inter_params)
             draw_settings = self.getDrawSettings()
+            self.shortcut(self.getAxe(), vec, draw_settings)
             selected = self.getPltDtH().getUnvizRows()
 
             self.dots_draw, mapper = self.prepareDotsDraw(vec, vec_dets, draw_settings)

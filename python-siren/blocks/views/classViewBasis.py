@@ -837,7 +837,7 @@ class ViewRedCorrel(ViewRed):
     def suitableView(tcl, typeD={}, ext_keys=None, what=None):
         if tcl.suitableD(typeD) and tcl.suitableExts(ext_keys):
             what_tid = None
-            if isinstance(what, Redescription) or isinstance(what, ColM):
+            if isinstance(what, Redescription):  # or isinstance(what, ColM):
                 what_tid = what.typeId()
             return DrawerBasis.isTypeId(what_tid, "Boolean", default_accept=True)
         return False

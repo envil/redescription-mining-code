@@ -31,6 +31,10 @@ import pdb
 
 def run(kw, loaded):
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
+    if "preferences_reader" in loaded and "params" in loaded:
+        log_params = loaded["preferences_reader"].getManager().dispParameters(pv=loaded["params"], conf_filter=loaded["params"]["conf_defs"], sections=False, helps=False, defaults=False, only_core=False, xml=False, wdata=False)
+        logger.printL(1, "Run with parameters:"+log_params, "log")
+
     miner = instMiner(data, params, logger, filenames=filenames)
     try:
         miner.full_run()
@@ -80,10 +84,9 @@ def run_folds(kw, loaded):
     params, data, logger, filenames = (loaded["params"], loaded["data"], loaded["logger"], loaded["filenames"])
 
     if "package" in filenames:
-        parts = filenames["package"].split("/")[-1].split(".")
-        pp = filenames["basis"].split("/")
-        pp[-1] = ".".join(parts[:-1])
-        filenames["basis"] = "/".join(pp)
+        head_p, tail_p = os.path.split(filenames["package"])
+        root_p, ext_p = os.path.splitext(tail_p)
+        filenames["basis"] = os.path.join(head_p, root_p)
 
     suff = None
     fold_cands = dict([(data.col(c[0], c[1]).getName(), c) for c in data.findCandsFolds(strict=False)])
@@ -215,6 +218,7 @@ def do_task(sargs, conf_defs=CONF_DEFS, tasks_meths=TASKS_METH, tasks_default=TA
     if "filenames" in loaded:
         print(loaded["filenames"])
     task = loaded["params"]["task"]
+    loaded["params"]["conf_defs"] = conf_defs
     print("Running %s" % task)
     tasks_meths[task](task, loaded)
 

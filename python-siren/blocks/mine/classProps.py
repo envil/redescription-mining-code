@@ -1132,7 +1132,7 @@ class RedProps(Props):
                                 "len": ("|", "|"), "card": ("|", "|"),
                                 "set": "", "supp": "", "extra": ""},
                        "which": {"I": "supp"},
-                       "rset": {"all": "", "active": "",
+                       "rset": {"all": "", "active": "", "private": "P",
                                 "cond": "C",
                                 "learn": SYM.SYM_LEARN, "test": SYM.SYM_TEST,
                                 "ratioTL": "T/L",

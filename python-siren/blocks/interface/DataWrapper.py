@@ -563,7 +563,7 @@ class DataWrapper(object):
 
     def _readPackageFromFile(self, filename):
         package = Package(filename, self._stopMessage)
-        elements_read = package.read(self.pm)
+        elements_read = package.read(self.getPreferencesReader())
         self.data = None
         self.clearRedescriptions()
 

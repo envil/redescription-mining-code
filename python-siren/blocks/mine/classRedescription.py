@@ -627,6 +627,7 @@ class Redescription(WithEVals):
     def getMethodPVal(self, details={}):
         return self.supports().getMethodPVal()
 
+
     # RESTRICTED SETS
 
     def setRestrictedSuppSets(self, data, supp_sets=None):

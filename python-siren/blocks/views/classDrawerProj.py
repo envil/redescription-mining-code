@@ -120,6 +120,39 @@ class DrawerProj(DrawerBasis):
 
 class DrawerEntitiesProj(DrawerProj, DrawerEntitiesTD):
 
+    # def shortcut(self, axe, vec, draw_settings):
+    #     facx, facy = (100, 100)
+    #     if numpy.max(self.getProj().coords_proj[0]) < 0.01:
+    #         self.getProj().coords_proj = (self.getProj().coords_proj[0] * facx, self.getProj().coords_proj[1] * facy)
+    #     # numpy.savetxt("points.csv", numpy.vstack([dots_draw["zord_dots"][draw_indices], self.getCoords(0), self.getCoords(1)]).T, "%.6f")
+
+    #     def func(x):
+    #         return 1.9*x-facy*0.0022
+    #     # return 2*x-0.0024
+
+    #     marg = facx*0.0004
+    #     # lowx, upx = (facx*.0002, facx*.0032)
+    #     lowx, upx = (numpy.min(self.getProj().coords_proj[0]), numpy.max(self.getProj().coords_proj[0]))
+    #     lowx -= .5*(upx-lowx)
+    #     upx += .5*(upx-lowx)
+
+    #     bndsX = numpy.array([lowx, lowx, upx, upx, lowx])
+    #     offX = numpy.array([-marg/2, marg/2, marg/2, -marg/2, -marg/2])
+    #     bndsY = func(bndsX)
+
+    #     axe.plot([lowx, upx], [func(lowx), func(upx)], ":", color="#74A8F6", zorder=20)
+    #     axe.fill(bndsX+offX, bndsY, facecolor="#74A8F6", alpha=0.4)
+
+    #     xs = self.getCoords(0)
+    #     ys = self.getCoords(1)
+    #     inout = numpy.abs(func(xs)-ys) < marg
+    #     reds = (vec == 0) | (vec == 1)
+
+    #     vec[inout & reds] = 2
+    #     vec[inout & ~reds] = 1
+    #     vec[~inout & reds] = 0
+    #     vec[~inout & ~reds] = 3
+
     def plotDotsSimple(self, axe, dots_draw, draw_indices, draw_settings):
         # if isinstance(self.getProj(), AxesProj) and self.getProj().getAxVars() is not None:
         #     xvar, yvar = self.getProj().getAxVars()

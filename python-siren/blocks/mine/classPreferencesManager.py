@@ -16,9 +16,10 @@ EXT_SIREN = ".siren"
 PATT_QALT = "suff(ix)?(?P<suff>.+)"
 
 conf_names = {"miner": 0, "inout": 0, "dataext": 1, "rnd": 1, "folds": 1}
+conf_names_data = ["inout", "dataext"]
 
 
-def fillNamesForConfDefs(conf_defs=None):
+def fillNamesForConfDefs(conf_defs=None, wdata=True):
     if conf_defs is None:
         conf_defs = [k for (k, v) in conf_names.items() if v == 0]
     elif any([(type(c) is int) for c in conf_defs]):
@@ -29,6 +30,8 @@ def fillNamesForConfDefs(conf_defs=None):
             else:
                 cd.add(cc)
         conf_defs = list(cd)
+    if not wdata:
+        conf_defs = [c for c in conf_defs if c not in conf_names_data]
     return conf_defs
 
 
@@ -714,10 +717,10 @@ class PreferencesManager(object):
     MTCH_ST = "^(?P<basis>[^0-9]*)((_s(?P<side>[01])_(?P<typ>[0-9]))|(_s(?P<oside>[01]))|(_(?P<otyp>[0-9])))$"
 
     @classmethod
-    def getConfDefSections(tcl, conf_defs=None):
+    def getConfDefSections(tcl, conf_defs=None, wdata=True):
         if conf_defs is None:
             return None
-        return ["%s_confdef.xml" % c if c in conf_names else os.path.basename(c) for c in fillNamesForConfDefs(conf_defs)]
+        return ["%s_confdef.xml" % c if c in conf_names else os.path.basename(c) for c in fillNamesForConfDefs(conf_defs, wdata)]
 
     def __init__(self, filenames):
         self.subsections = []
@@ -742,8 +745,8 @@ class PreferencesManager(object):
             strd += self.dispSection(sec)
         return strd
 
-    def getTopSections(self, conf_filter=None):
-        only_sections = self.getConfDefSections(conf_filter)
+    def getTopSections(self, conf_filter=None, wdata=True):
+        only_sections = self.getConfDefSections(conf_filter, wdata)
         sections = []
         for t in self.subsections:
             path = ":".join(t.get("pfr"))
@@ -830,13 +833,19 @@ class PreferencesManager(object):
         if parameters is not None:
             return parameters
 
-    def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None):
+    def dispParametersRec(self, parameters, pv, level=0, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None, xml=True):
         indents = ""
         strd, header, footer = ("", "", "")
-        if sections:
-            indents = "\t"*(level+1)
-            header = ("\t"*level)+"<section>\n"+indents+("<name>%s</name>\n" % parameters.get("name", ""))
-            footer = ("\t"*level)+"</section>\n"
+        if xml:
+            if sections:
+                indents = "\t"*(level+1)
+                header = ("\t"*level)+"<section>\n"+indents+("<name>%s</name>\n" % parameters.get("name", ""))
+                footer = ("\t"*level)+"</section>\n"
+        else:
+            if sections:
+                footer = ("#"*level) + ("# %s" % parameters.get("name", "")) + "\n"
+            if not sections and not helps:
+                indents = " --"
 
         for k in self.parameter_types.keys():
             for item_id in parameters[k]:
@@ -853,30 +862,44 @@ class PreferencesManager(object):
                         item = None
 
                 if item is not None:  # and ((core and item.isCore()) or (defaults or not is_def))
-                    strd += indents+"<parameter>\n"
-                    strd += indents+"\t<name>" + item.getName() + "</name>\n"
-                    if sections:
-                        strd += indents+"\t<label>" + item.getLabel() + "</label>\n"
-                    if helps:
-                        strd += indents+"\t<info>" + item.getInfo() + "</info>\n"
-                    if type(vs) == list:
-                        for v in vs:
-                            strd += indents+"\t<value>" + v + "</value>\n"
+                    if xml:
+                        strd += indents+"<parameter>\n"
+                        strd += indents+"\t<name>" + item.getName() + "</name>\n"
+                        if sections:
+                            strd += indents+"\t<label>" + item.getLabel() + "</label>\n"
+                        if helps:
+                            strd += indents+"\t<info>" + item.getInfo() + "</info>\n"
+                        if type(vs) is set or type(vs) is list:
+                            for v in vs:
+                                strd += indents+"\t<value>" + v + "</value>\n"
+                        else:
+                            strd += indents+"\t<value>" + vs + "</value>\n"
+                        strd += indents+"</parameter>\n"
                     else:
-                        strd += indents+"\t<value>" + vs + "</value>\n"
-                    strd += indents+"</parameter>\n"
+                        if type(vs) is set or type(vs) is list:
+                            strd += indents + item.getName() + " " + " ".join(vs)
+                        else:
+                            strd += indents + item.getName() + " " + vs
+
+                        if sections or helps:
+                            strd += " #"
+                            if sections:
+                                strd += " [%s]" % item.getLabel()
+                            if helps:
+                                strd += " " + item.getInfo()
+                            strd += "\n"
 
         for k in parameters["subsections"]:
             strd += self.dispParametersRec(k, pv, level+1, sections, helps, defaults,
-                                           only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
+                                           only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections, xml=xml)
         if len(strd) > 0:
             return header + strd + footer
         else:
             return ""
 
-    def dispParameters(self, pv=None, conf_filter=None, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None):
+    def dispParameters(self, pv=None, conf_filter=None, sections=True, helps=False, defaults=False, only_core=False, only_sections=None, suppress_sections=None, xml=True, wdata=True):
         if only_sections is None and suppress_sections is None:
-            only_sections = self.getConfDefSections(conf_filter)
+            only_sections = self.getConfDefSections(conf_filter, wdata)
         if (pv is None or conf_filter is not None) and defaults:
             helps = True
             if not only_core:
@@ -886,10 +909,13 @@ class PreferencesManager(object):
         for subsection in self.subsections:
             # print("---SUBSECTION:", subsection.get("name"))
             strd += self.dispParametersRec(subsection, pv, 0, sections, helps, defaults,
-                                           only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections)
-        if len(strd) == 0:
-            strd = "<!-- Using only default parameters --> "
-        return "<root>\n"+strd+"</root>"
+                                           only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections, xml=xml)
+        if xml:
+            if len(strd) == 0:
+                strd = "<!-- Using only default parameters --> "
+            return "<root>\n"+strd+"</root>"
+        else:
+            return strd
 
     def collectParametersRec(self, parameters, sections=True, only_core=False, only_sections=None, suppress_sections=None):
         items = []
@@ -906,9 +932,9 @@ class PreferencesManager(object):
                                                    only_core=only_core, only_sections=only_sections, suppress_sections=suppress_sections))
         return items
 
-    def collectParameters(self, conf_filter=None, sections=True, only_core=False, only_sections=None, suppress_sections=None):
+    def collectParameters(self, conf_filter=None, sections=True, only_core=False, only_sections=None, suppress_sections=None, wdata=True):
         if only_sections is None and suppress_sections is None:
-            only_sections = self.getConfDefSections(conf_filter)
+            only_sections = self.getConfDefSections(conf_filter, wdata)
         items = []
         for subsection in self.subsections:
             items.extend(self.collectParametersRec(subsection, sections,
@@ -1155,8 +1181,8 @@ class PreferencesReader(argparse.ArgumentParser):
     #     return pv
 
 
-def getPathsForConfDefs(conf_defs=None):
-    conf_defs = fillNamesForConfDefs(conf_defs)
+def getPathsForConfDefs(conf_defs=None, wdata=True):
+    conf_defs = fillNamesForConfDefs(conf_defs, wdata)
     pref_dir = os.path.dirname(os.path.abspath(__file__))
     conf_paths = ["%s/%s_confdef.xml" % (pref_dir, c) if c in conf_names else c for c in conf_defs]
     return conf_paths

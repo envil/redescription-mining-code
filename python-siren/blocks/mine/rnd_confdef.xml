@@ -25,7 +25,7 @@
         <legend>Basename of the file containing the traits data.</legend>
         <length>50</length>
         <default>
-          <value>left</value>
+          <value></value>
         </default>
       </parameter>
       <parameter>

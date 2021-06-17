@@ -1,8 +1,6 @@
 import multiprocessing
-import random
-import numpy
-import os.path
 import re
+# import numpy
 
 try:
     from toolLog import Log
@@ -118,13 +116,13 @@ class RCollection(BatchCollection, Souvenirs):
 
 
 class ExpMiner(object):
-    def __init__(self, pid, count, data, charbon, constraints, logger=None, question_live=None):
+    def __init__(self, pid, count, data, charbon, constraints, logger=None, question_live=None, up_souvenirs=True):
         self.charbon = charbon
         self.data = data
         self.count = count
         self.pid = pid
         self.constraints = constraints
-        self.upSouvenirs = False
+        self.up_souvenirs = up_souvenirs
         self.question_live = question_live
         if logger is None:
             self.logger = DummyLog()
@@ -141,16 +139,6 @@ class ExpMiner(object):
         if self.question_live is None:
             return True
         return self.question_live()
-
-    def initGreedyCharbon(self):
-        if self.constraints.getCstr("add_condition"):
-            if not self.data.isConditional() and self.data.isGeospatial():
-                self.data.prepareGeoCond()
-
-        if CHARBON_MISS_FORCE or self.data.hasMissing():
-            return CharbonGMiss(self.constraints, logger=self.shareLogger())
-        else:
-            return CharbonGStd(self.constraints, logger=self.shareLogger())
 
     def expandRedescriptions(self, nextge, rcollect=None):
         if len(nextge) > 0 and self.questionLive():
@@ -237,7 +225,7 @@ class ExpMiner(object):
                         rcollect.addTrack(track)
 
                     # SOUVENIRS
-                    if self.upSouvenirs:
+                    if self.up_souvenirs:
                         rcollect.updateSeen(kids)
 
                     # parent has been used remove availables
@@ -443,6 +431,7 @@ class Miner(object):
         self.count = "-"
         self.qin = qin
         self.org_data = None
+        self.up_souvenirs = True
         self.want_to_live = True
         if mid is not None:
             self.id = mid
@@ -507,20 +496,11 @@ class Miner(object):
         return self.rcollect.toShare()
 
     def shareLogger(self):
-        return self.logger
+        return None
+        # return self.logger
         # if not self.logger.usesOutMethods():
         #     return self.logger
         # return None
-
-    def initGreedyCharbon(self):
-        if self.constraints.getCstr("add_condition"):
-            if not self.data.isConditional() and self.data.isGeospatial():
-                self.data.prepareGeoCond()
-
-        if CHARBON_MISS_FORCE or self.data.hasMissing():
-            return CharbonGMiss(self.constraints)
-        else:
-            return CharbonGStd(self.constraints)
 
     def initCharbon(self):
         if self.constraints.getCstr("mining_algo") in TREE_CLASSES:
@@ -531,7 +511,16 @@ class Miner(object):
                 return TREE_CLASSES.get(self.constraints.getCstr("mining_algo"), TREE_DEF)(self.constraints, logger=self.shareLogger())
         elif self.constraints.getCstr("mining_algo") in XAUST_CLASSES:
             return XAUST_CLASSES.get(self.constraints.getCstr("mining_algo"), XAUST_DEF)(self.constraints, logger=self.shareLogger())
-        return self.initGreedyCharbon()
+
+        else:  # INIT GREEDY CHARBON
+            if self.constraints.getCstr("add_condition"):
+                if not self.data.isConditional() and self.data.isGeospatial():
+                    self.data.prepareGeoCond()
+
+            if CHARBON_MISS_FORCE or self.data.hasMissing():
+                return CharbonGMiss(self.constraints, logger=self.shareLogger())
+            else:
+                return CharbonGStd(self.constraints, logger=self.shareLogger())
 
     def kill(self):
         self.want_to_live = False
@@ -678,6 +667,7 @@ class Miner(object):
 # INITIAL PAIRS
 ####################################################
 
+
     def initializeRedescriptions(self, ids=None):
         if self.charbon.withInitTerms():
             self.initial_candidates = initCands("T", self.data, self.constraints)
@@ -811,12 +801,13 @@ class Miner(object):
 # REDS EXPANSIONS
 ####################################################
 
-
     def expandRedescriptions(self, nextge, rcollect=None):
-        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).expandRedescriptions(nextge, rcollect)
+        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger,
+                        question_live=self.questionLive, up_souvenirs=self.up_souvenirs).expandRedescriptions(nextge, rcollect)
 
     def improveRedescriptions(self, nextge, rcollect=None):
-        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger, self.questionLive).improveRedescriptions(nextge, rcollect)
+        return ExpMiner(self.getId(), self.count, self.data, self.charbon, self.constraints, self.logger,
+                        question_live=self.questionLive, up_souvenirs=self.up_souvenirs).improveRedescriptions(nextge, rcollect)
 
 #######################################################################
 # MULTIPROCESSING MINER
@@ -1087,7 +1078,7 @@ class ExpandProcess(multiprocessing.Process, ExpMiner):
         self.constraints = constraints
         self.queue = rqueue
 
-        self.upSouvenirs = False
+        self.up_souvenirs = False
         self.question_live = question_live
         if logger is None:
             self.logger = DummyLog()

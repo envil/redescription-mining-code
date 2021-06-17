@@ -27,6 +27,33 @@ except ModuleNotFoundError:
     from .classPreferencesManager import getPreferencesReader, EXT_SIREN, PATT_QALT
 
 
+def make_filepath(filename,  basic_parts=None, default_suff="_alt", default_ext=""):
+    # filename can be either
+    # + -> filepath is built from the basic_parts if they are not None
+    # a full path -> directly returned as filepath
+    # a basename (no path, but an extension) -> combined to the path from basic_parts is it is not None
+    # a suffix (no path, no extension) -> combined to basic_parts, instead of default_suff
+    if filename is None or len(filename) == 0:
+        return None
+    ext = None
+    if basic_parts is not None:
+        ext = basic_parts[-1]
+    if (default_ext is not None and len(default_ext) > 0):
+        ext = default_ext
+
+    if basic_parts is not None and filename == "+":  # filename is + -> make filename from basic
+        return os.path.join(basic_parts[0], basic_parts[1] + default_suff + ext)
+    elif len(filename) > 0 or (default_ext is not None and len(default_ext) > 0):
+        head_n, tail_n = os.path.split(filename)
+        if len(head_n) > 0:  # if folder is provided, use it
+            return filename
+        elif basic_parts is not None:  # otherwise use from basic if possible
+            root_n, ext_n = os.path.splitext(tail_n)
+            if len(ext_n) > 0:  # if extension -> complete basename
+                return os.path.join(basic_parts[0], root_n + ext_n)
+            return os.path.join(basic_parts[0], basic_parts[1] + filename + ext)
+
+
 class Package(object):
     """Class to handle the zip packages that contain data, preferences, results, etc. for redescription mining.
     """
@@ -617,33 +644,23 @@ class IOTools:
         filenames["queries"] = queries_basic
         filenames["all_queries"] = all_queries
 
-        parts = filenames["queries"].split(".")
-        basis = ".".join(parts[:-1])
-        filenames["basis"] = basis
+        if filenames["queries"] != "-":
+            head_q, tail_q = os.path.split(filenames["queries"])
+            root_q, ext_q = os.path.splitext(tail_q)
+            basic_parts = (head_q, root_q, ext_q)
+            filenames["basis"] = os.path.join(head_q, root_q)
+        else:
+            filenames["basis"] = ""
 
+        build_files = [("queries_named", "queries_named_file", "_named", None),
+                       ("support", "support_file", "_support", params.get("ext_support")),
+                       ("logfile", "logfile", "", params.get("ext_log")),
+                       ("pairs_store", "pairs_store", "_pairs", params.get("ext_log"))]
         # Make named queries file name
-        if filenames["queries"] != "-" and params.get("queries_named_file", "") == "+":
-            filenames["queries_named"] = basis+"_named."+parts[-1]
-        elif len(params.get("queries_named_file", "")) > 0:
-            filenames["queries_named"] = params["queries_named_file"]
-
-        # Make support file name
-        if filenames["queries"] != "-" and params.get("support_file", "") == "+" and len(params.get("ext_support", "")) > 0:
-            filenames["support"] = basis+params["ext_support"]
-        elif len(params.get("support_file", "")) > 0:
-            filenames["support"] = params["support_file"]
-
-        # Make log file name
-        if filenames["queries"] != "-" and params.get("logfile", "") == "+" and len(params.get("ext_log", "")) > 0:
-            filenames["logfile"] = basis+params["ext_log"]
-        elif len(params.get("logfile", "")) > 0:
-            filenames["logfile"] = params["logfile"]
-
-        # Make file name for storing pair candidates
-        if filenames["queries"] != "-" and params.get("pairs_store", "") == "+" and len(params.get("ext_log", "")) > 0:
-            filenames["pairs_store"] = basis+"_pairs"+params["ext_log"]
-        elif len(params.get("pairs_store", "")) > 0:
-            filenames["pairs_store"] = params["pairs_store"]
+        for (path_param, file_param, default_suff, default_ext) in build_files:
+            fpath = make_filepath(params.get(file_param),  basic_parts, default_suff, default_ext)
+            if fpath is not None:
+                filenames[path_param] = fpath
 
         if len(params.get("series_id", "")) > 0:
             for k in filenames.keys():

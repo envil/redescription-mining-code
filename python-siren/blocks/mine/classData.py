@@ -380,7 +380,7 @@ class Data(ContentCollection):
         cid, ccs = None, None
         if False:  # side == -1 and self.condition_dt is not None:
             ccs = self.condition_dt["cols"]
-            if type(literal) in [int, numpy.int64]:
+            if (type(literal) is int) or (isinstance(literal, numpy.integer)):
                 cid = literal
             elif (isinstance(literal, Term) or isinstance(literal, Literal)):
                 cid = literal.colId()
@@ -391,7 +391,7 @@ class Data(ContentCollection):
 
         elif side in self.containers:
             ccs = self.items
-            if type(literal) in [int, numpy.int64]:
+            if (type(literal) is int) or (isinstance(literal, numpy.integer)):
                 cid = (side, literal)
             elif (isinstance(literal, Term) or isinstance(literal, Literal)):
                 cid = (side, literal.colId())
@@ -1635,19 +1635,21 @@ def parseDNCFromCSVData(csv_data, single_dataset=False):
                 while col is None and len(type_ids) >= 1:
                     col = type_ids.pop().parseList(values, indices[side], native_missing_check=False)
 
-            if col is not None and col.N == N:
-                if not det.get("enabled", True) or \
-                        not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1, 1))[sito]:
-                    col.flipEnabled()
-                if len(csv_data["data"][side][csv_reader.GROUPS_COLS[0]]) > 0:
-                    gid = int(csv_data["data"][side][csv_reader.GROUPS_COLS[0]].get(name, -1))
-                    col.setGroupId(gid)
-                # if not det.get("enabled", True) or \
-                col.setSideIdName(sito, len(cols[sito]), det.get("name", name))
-                cols[sito].append(col)
+            if col is not None:
+                if col.N == N:
+                    if not det.get("enabled", True) or \
+                            not Data.enabled_codes_rev_double.get(csv_data["data"][side][csv_reader.ENABLED_COLS[0]].get(name, None), (1, 1))[sito]:
+                        col.flipEnabled()
+                    if len(csv_data["data"][side][csv_reader.GROUPS_COLS[0]]) > 0:
+                        gid = int(csv_data["data"][side][csv_reader.GROUPS_COLS[0]].get(name, -1))
+                        col.setGroupId(gid)
+                    # if not det.get("enabled", True) or \
+                    col.setSideIdName(sito, len(cols[sito]), det.get("name", name))
+                    cols[sito].append(col)
+                else:
+                    raise DataError('Unexpected number of rows in column %s on side %s! (%d instead of %d)' % (name, side, col.N, N))
             else:
-                # pdb.set_trace()
-                raise DataError('Unrecognized variable type!')
+                raise DataError('Unrecognized variable type for column %s on side %s!' % (name, side))
     return (cols, N, coords, rnames, disabled_rows, condition_dt)
 
 
