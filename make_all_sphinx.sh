@@ -26,14 +26,14 @@ mkdir ${OUT_REP}
 cp -r ${SPH_REP} ${SPHINX_REP}
 
 ### COPY FILES FROM THE SOURCE CODE TO DOC
-cp ${SRC_REP}/siren/*/*confdef.xml ${SPHINX_REP}/_static/
+cp ${SRC_REP}/blocks/*/*confdef.xml ${SPHINX_REP}/_static/
 sed -i 's:\./clired/confdef:/confdef:' ${SPHINX_REP}/_static/*confdef.xml
 
 cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/_static/
 
 mkdir ${SPHINX_REP}/siren
 cp ${SRC_REP}/CHANGELOG ${SPHINX_REP}/
-cp ${SRC_REP}/siren/common_details.py ${SPHINX_REP}/siren/
+cp ${SRC_REP}/blocks/common_details.py ${SRC_REP}/blocks/mine/toolXML.py ${SRC_REP}/blocks/mine/classPreferencesManager.py ${SPHINX_REP}/siren/
 
 ### UPDATE THE IMPORT PATH FOR COMMON VARIABLES IN SPHINX CONF FILES
 sed -i -e s:__SIREN_PYTHON_PATH__:${SPHINX_REP}/siren:g ${SPHINX_REP}/*/conf.py
@@ -76,15 +76,15 @@ else
     make html
     cp -r _build/html ${OUT_REP}/main
 
-    #### MAKE CONF SPECIFIC
-    for conf in "sigmod" "icdm"; do
-        cd ${SPHINX_REP}/siren-${conf}/
-        rm -rf _build
-        make singlehtml
-        make latexpdf
-        cp -r _build/singlehtml ${OUT_REP}/${conf}
-        cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
-    done
+    # #### MAKE CONF SPECIFIC
+    # for conf in "sigmod" "icdm"; do
+    #     cd ${SPHINX_REP}/siren-${conf}/
+    #     rm -rf _build
+    #     make singlehtml
+    #     make latexpdf
+    #     cp -r _build/singlehtml ${OUT_REP}/${conf}
+    #     cp _build/latex/Siren.pdf ${OUT_REP}/${conf}/Siren-$(echo ${conf} | tr 'a-z' 'A-Z' ).pdf
+    # done
 
     cd ${OUT_REP}
     sed -i 's:\([^/]\)_static/:\1../_static/:g' */*.html

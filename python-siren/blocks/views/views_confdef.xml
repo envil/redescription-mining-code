@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../mine/confdef.xsl"?>
+<root>
+  <info>Visualization preferences for the Siren redescription mining tool.</info>
+  <section>
+    <name>Views</name>
+    <section>
+      <name>Vizualizations</name>
+      <parameter>
+        <name>intab_nbr</name>
+        <label>Intab grid rows</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Number of rows of the grid for visualizations in the tab.</legend>
+        <length>1</length>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>intab_nbc</name>
+        <label>Intab grid cols</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Number of columns of the grid for visualizations in the tab.</legend>
+        <length>1</length>
+        <default>
+          <value>2</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>dot_size</name>
+        <label>Dot size</label>
+        <parameter_type>range</parameter_type>
+        <value_type>float</value_type>
+        <legend>Size of the dots in points.</legend>
+        <range_min>0</range_min>
+        <range_max>10</range_max>
+        <default>
+          <value>3</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>dot_shape</name>
+        <label>Dot shape</label>
+        <parameter_type>single_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Shape of the dots</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>s</value>
+          <value>o</value>
+          <value>p</value>
+          <value>h</value>
+          <value>8</value>
+          <value>.</value>
+          <value>,</value>
+          <value>*</value>
+          <value>+</value>
+          <value>x</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>alpha_off</name>
+        <label>Transparency off</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Turn transparency off.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>add_stamp</name>
+        <label>Add stamp</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Stamp redescription above the figure.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>miss_details</name>
+        <label>Detailed missing</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show details of different missing values.</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>draw_delta</name>
+        <label>Draw uncovered</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Draw uncovered entities (map)</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>click_entities</name>
+        <label>Click entities</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show details entities labels on click.</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>hover_entities</name>
+        <label>Hover entities</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show details entities labels on hover.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>hover_coords</name>
+        <label>Hover coordinates</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show coordinates on hover.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>plot_fontsize</name>
+        <label>Font size</label>
+        <parameter_type>range</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Font size used in plots for ticks, etc.</legend>
+        <range_min>0</range_min>
+        <range_max>100</range_max>
+        <default>
+          <value>12</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>details_level</name>
+        <label>Details level</label>
+        <parameter_type>range</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Level of details for plotting the parallel coordinates.</legend>
+        <range_min>0</range_min>
+        <range_max>100</range_max>
+        <default>
+          <value>50</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>max_emphlbl</name>
+        <label>Max emph lbls</label>
+        <parameter_type>range</parameter_type>
+        <value_type>integer</value_type>
+        <legend>More that this number of entities selected at once will not get individual labels.</legend>
+        <range_min>-1</range_min>
+        <range_max>20</range_max>
+        <default>
+          <value>5</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>literals_contrib</name>
+        <label>Show literals contribution</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show contribution of literals (PaCo)</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+    </section>
+  </section>
+  <section>
+    <name>Colors</name>
+    <section>
+      <name>Colors</name>
+      <parameter>
+        <name>color_l</name>
+        <label>Color LHS</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for plotting the LHS support.</legend>
+        <length>7</length>
+        <default>
+          <value>#FC5864</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>color_r</name>
+        <label>Color RHS</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for plotting the RHS support.</legend>
+        <length>7</length>
+        <default>
+          <value>#74A8F6</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>color_i</name>
+        <label>Color Intersection</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for plotting the intersection support.</legend>
+        <length>7</length>
+        <default>
+          <value>#662A8D</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>color_o</name>
+        <label>Color Uncovered</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for plotting the uncovered entities.</legend>
+        <length>7</length>
+        <default>
+          <value>#E6E6E6</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>color_h</name>
+        <label>Color Highlight</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for highlighting entities.</legend>
+        <length>7</length>
+        <default>
+          <value>#FFFF00</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>custom_ccmap</name>
+        <label>Custom cluster colors</label>
+        <parameter_type>open</parameter_type>
+        <value_type>text</value_type>
+        <legend>Custom colors for plotting clusters (matplotlib cmap name, list or dictionnary of hexadecimal colors).</legend>
+        <length>310</length>
+        <default>
+          <value/>
+        </default>
+      </parameter>
+    </section>
+  </section>
+  <section>
+    <name>List views</name>
+    <section>
+      <name>Vizualizations</name>
+      <parameter>
+        <name>max_clus</name>
+        <label>Max nb. clusters</label>
+        <parameter_type>open</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Maximum number of clusters in similarity list view.</legend>
+        <length>3</length>
+        <default>
+          <value>20</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>supp_part_clus</name>
+        <label>Support parts</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>Exx</value>
+          <value>Exo</value>
+          <value>Eox</value>
+          <value>Eoo</value>
+        </options>
+        <legend>Support parts to use in computing clusters.</legend>
+      </parameter>
+      <parameter>
+        <name>miss_part_clus</name>
+        <label>Missing support parts</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <default/>
+        <options>
+          <value>Exm</value>
+          <value>Emx</value>
+          <value>Eom</value>
+          <value>Emo</value>
+          <value>Emm</value>
+        </options>
+        <legend>Missing support parts to use in computing clusters.</legend>
+      </parameter>
+      <parameter>
+        <name>blocks_disp_values</name>
+        <label>Values for blocks</label>
+        <parameter_type>single_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Property to use as value for blocks.</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>fractions</value>
+          <value>percentages</value>
+          <value>counts</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>blocks_reorder_rids</name>
+        <label>Re-order r.ids for blocks</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Reorder redescriptions for blocks.</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>blocks_show_rids</name>
+        <label>Show r.ids for blocks</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show redescriptions ids for blocks.</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>blocks_show_values</name>
+        <label>Show values for blocks</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Show values for blocks.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>blocks_show_emph</name>
+        <label>Draw selection block</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Draw special block for selection.</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+    </section>
+  </section>
+  <section>
+    <name>Maps elems.</name>
+    <section>
+      <name>Elements</name>
+      <parameter>
+        <name>line_color</name>
+        <label>Line color</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for drawing map lines.</legend>
+        <length>7</length>
+        <default>
+          <value>#808080</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>sea_color</name>
+        <label>Sea color</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for filling water bodies in maps.</legend>
+        <length>7</length>
+        <default>
+          <value>#F9FCFF</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>land_color</name>
+        <label>Land color</label>
+        <parameter_type>color_pick</parameter_type>
+        <value_type>color</value_type>
+        <legend>Color for filling land areas in maps.</legend>
+        <length>7</length>
+        <default>
+          <value>#FFFFFF</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>map_lines_overlay</name>
+        <label>Overlay</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Overlay map lines on top of other plot elements.</legend>
+        <default>
+          <value>0</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>map_elem_area</name>
+        <label>Map natural areas</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Map natural areas to paint.</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>seas</value>
+          <value>continents</value>
+          <value>lakes</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>map_elem_natural</name>
+        <label>Map natural elements</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Map natural elements to draw.</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>coasts</value>
+          <value>rivers</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>map_elem_geop</name>
+        <label>Map geopolitic elements</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Map geopolitic borders to paint.</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>countries</value>
+          <value>states</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>map_elem_circ</name>
+        <label>Map imaginary circles</label>
+        <parameter_type>multiple_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Map imaginary circles to draw.</legend>
+        <default/>
+        <options>
+          <value>parallels</value>
+          <value>meridians</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>map_back</name>
+        <label>Map background</label>
+        <parameter_type>single_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Background to use for the map (only with Basemap, not with Cartopy).</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>none</value>
+          <value>shaded relief</value>
+          <value>etopo relief</value>
+          <value>NASA Blue Marble</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>map_back_alpha</name>
+        <label>Map background opacity</label>
+        <parameter_type>range</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Opacity of the background image.</legend>
+        <range_min>0</range_min>
+        <range_max>100</range_max>
+        <default>
+          <value>100</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>map_back_scale</name>
+        <label>Map background scale</label>
+        <parameter_type>range</parameter_type>
+        <value_type>integer</value_type>
+        <legend>Scale of the background image.</legend>
+        <range_min>0</range_min>
+        <range_max>100</range_max>
+        <default>
+          <value>100</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>map_poly</name>
+        <label>Polygons</label>
+        <parameter_type>boolean</parameter_type>
+        <legend>Use polygons to represent entities on the map</legend>
+        <default>
+          <value>1</value>
+        </default>
+      </parameter>
+    </section>
+  </section>
+  <section>
+    <name>Maps proj.</name>
+    <section>
+      <name>Projection</name>
+      <parameter>
+        <name>map_resolution</name>
+        <label>Resolution</label>
+        <parameter_type>single_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Resolution of the map elements.</legend>
+        <default>
+          <value>0</value>
+        </default>
+        <options>
+          <value>crude</value>
+          <value>low</value>
+          <value>intermediate</value>
+          <value>high</value>
+          <value>full</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>map_proj</name>
+        <label>Projection</label>
+        <parameter_type>single_options</parameter_type>
+        <value_type>text</value_type>
+        <legend>Projection to use for the map.</legend>
+        <default>
+          <value>7</value>
+        </default>
+        <options>
+          <value>none</value>
+          <value>Plate Carree</value>
+          <value>Transverse Mercator</value>
+          <value>Mercator</value>
+          <value>Lambert Cylindrical</value>
+          <value>Lambert Conformal</value>
+          <value>Lambert Azimuthal Equal Area</value>
+          <value>Miller</value>
+          <value>Rotated Pole</value>
+          <value>Gnomonic</value>
+          <value>Stereographic</value>
+          <value>North Polar Stereo</value>
+          <value>South Polar Stereo</value>
+          <value>Orthographic</value>
+          <value>Mollweide</value>
+          <value>Robinson</value>
+          <value>Interrupted Goode Homolosine</value>
+          <value>Geostationary</value>
+          <value>Albers Equal Area</value>
+          <value>Azimuthal Equidistant</value>
+          <value>Sinusoidal</value>
+        </options>
+      </parameter>
+      <parameter>
+        <name>llon</name>
+        <label>Left corner longitude</label>
+        <parameter_type>range</parameter_type>
+        <value_type>float</value_type>
+        <legend>Map boundary's left corner longitude.</legend>
+        <range_min>-180</range_min>
+        <range_max>181</range_max>
+        <default>
+          <value>181</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>ulon</name>
+        <label>Right corner longitude</label>
+        <parameter_type>range</parameter_type>
+        <value_type>float</value_type>
+        <legend>Map boundary's right corner longitude.</legend>
+        <range_min>-180</range_min>
+        <range_max>181</range_max>
+        <default>
+          <value>181</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>llat</name>
+        <label>Lower corner latitude</label>
+        <parameter_type>range</parameter_type>
+        <value_type>float</value_type>
+        <legend>Map boundary's lower corner latitude.</legend>
+        <range_min>-180</range_min>
+        <range_max>181</range_max>
+        <default>
+          <value>181</value>
+        </default>
+      </parameter>
+      <parameter>
+        <name>ulat</name>
+        <label>Upper corner latitude</label>
+        <parameter_type>range</parameter_type>
+        <value_type>float</value_type>
+        <legend>Map boundary's upper corner latitude.</legend>
+        <range_min>-180</range_min>
+        <range_max>181</range_max>
+        <default>
+          <value>181</value>
+        </default>
+      </parameter>
+    </section>
+  </section>
+</root>

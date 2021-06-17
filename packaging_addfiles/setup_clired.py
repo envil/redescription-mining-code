@@ -1,9 +1,10 @@
-import sys, subprocess
+import sys
+import subprocess
 import setuptools
 
 import pdb
 
-from common_details import clired_variables
+from blocks.common_details import clired_variables
 
 # Common info
 APP = clired_variables["MAIN_FILENAME"]
@@ -16,14 +17,16 @@ DEPENDENCIES = clired_variables["DEPENDENCIES_PIP_LIST"]
 AUTHOR = clired_variables["PROJECT_AUTHORS"]
 AUTHOR_EMAIL = clired_variables["MAINTAINER_EMAIL"]
 URL = clired_variables["PROJECT_URL"]
-LICENSE="Apache_2.0"
-COPYRIGHT=u'\u00A9 '+clired_variables["COPYRIGHT_YEAR_FROM"]+'-' \
-               +clired_variables["COPYRIGHT_YEAR_FROM"]+' ' \
-               +clired_variables["PROJECT_AUTHORS"]
-DU_FILES = [APP[:-3]]
+LICENSE = "Apache_2.0"
+COPYRIGHT = u'\u00A9 '+clired_variables["COPYRIGHT_YEAR_FROM"]+'-' \
+    + clired_variables["COPYRIGHT_YEAR_FROM"]+' ' \
+    + clired_variables["PROJECT_AUTHORS"]
+DU_FILES = ["exec_server", "exec_client"]
 # setuptools.find_packages()
-DU_PACKAGES = ['clired', 'clired.grako']
-PACKAGE_DATA = {'clired': ['*_confdef.xml', '*defs*.txt', 'LICENSE*']}
+DU_PACKAGES = ['blocks', 'blocks.mine', 'blocks.mine.grako', 'blocks.work']
+PACKAGE_DATA = {'blocks.mine': ['*_confdef.xml', '*defs*.txt'],
+                'blocks.work': ['network_confdef.xml']}
+
 
 def get_git_hash():
     git_hash = '-1'
@@ -32,6 +35,7 @@ def get_git_hash():
     except (subprocess.CalledProcessError, OSError):
         print("No GIT found, using default git revision (-1) instead")
     return git_hash.strip()
+
 
 setuptools.setup(
     name=NAME,
@@ -50,15 +54,17 @@ setuptools.setup(
     # other arguments here...
     entry_points={
         'console_scripts': [
-            'exec_clired = clired.exec_clired:main',
-        ],        
+            'exec_clired = blocks.mine.exec_clired:main',
+            'exec_server = exec_server:main',
+            'exec_client = exec_client:main',
+        ],
     },
     python_requires='>=3',
     classifiers=[
-    "Development Status :: 4 - Beta",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
-    "Topic :: Scientific/Engineering",
+        "Development Status :: 4 - Beta",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+        "Topic :: Scientific/Engineering",
     ],
 )

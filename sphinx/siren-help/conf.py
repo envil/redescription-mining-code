@@ -11,13 +11,27 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
-import sys, os
 from datetime import datetime
+import sys
+import os
+import glob
+sys.path.append(os.path.abspath("../_ext"))
 sys.path.append("__SIREN_PYTHON_PATH__")
+
 from common_details import common_variables, getExtLinks
+from classPreferencesManager import fillParamsDocRST
+
 cv = common_variables
 extlinks = getExtLinks(cv)
+
+paramdoc_file_in = "./preferences.tmpl"
+paramdoc_file_out = "./preferences.rst"
+
+if not os.path.exists(paramdoc_file_out):
+    conf_files = set(glob.glob("../_static/*_confdef.xml"))
+    paramdoc_content = fillParamsDocRST(paramdoc_file_in, conf_files, "<\.\./_static/(?P<conf_filter>[^_]+_confdef.xml)>")
+    with open(paramdoc_file_out, "w") as fo:
+        fo.write("\n".join(paramdoc_content))
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -31,7 +45,7 @@ extlinks = getExtLinks(cv)
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinxcontrib.bibtex', 'sphinx.ext.mathjax', 'sphinx.ext.extlinks']
+extensions = ['sphinxcontrib.bibtex', 'sphinx.ext.mathjax', 'sphinx.ext.extlinks', 'paramdoc']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['../_templates']
@@ -106,7 +120,7 @@ html_theme = 'pyramid'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = cv["PROJECT_NAME"] +" - "+ cv["PROJECT_DESCRIPTION"]+" - User Guide"
+html_title = cv["PROJECT_NAME"] + " - " + cv["PROJECT_DESCRIPTION"]+" - User Guide"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 # html_short_title = ""
@@ -140,12 +154,12 @@ html_last_updated_fmt = '%b %Y'
 # Custom sidebar templates, maps document names to template names.
 #html_sidebars = {}
 html_sidebars = {
-    '**': ['globaltoc.html', # 'sidebarhelp.html', 'sourcelink.html',
-           'searchbox_help_wpdf.html'], #, 'sourcelink.html'],
-    'index': ['searchbox_help_wpdf.html'] #, 'sourcelink.html'],
+    '**': ['globaltoc.html',  # 'sidebarhelp.html', 'sourcelink.html',
+           'searchbox_help_wpdf.html'],  # , 'sourcelink.html'],
+    'index': ['searchbox_help_wpdf.html']  # , 'sourcelink.html'],
     # 'index': ['indexsidebar.html', 'sidebarhelp.html', 'sourcelink.html',
     #           'searchbox.html'],
-    }
+}
 
 # Additional templates that should be rendered to pages, maps page names to
 # template names.
@@ -155,7 +169,7 @@ html_sidebars = {
 #html_domain_indices = True
 
 # If false, no index is generated.
-html_use_index = False
+html_use_index = True  # False
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False
@@ -184,24 +198,24 @@ htmlhelp_basename = 'Sirendoc'
 # -- Options for LaTeX output --------------------------------------------------
 
 latex_elements = {
-# The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+    # The paper size ('letterpaper' or 'a4paper').
+    # 'papersize': 'letterpaper',
 
-# The font size ('10pt', '11pt' or '12pt').
-#'pointsize': '10pt',
+    # The font size ('10pt', '11pt' or '12pt').
+    # 'pointsize': '10pt',
 
-'transition' : '\n\n\\bigskip{}\\',
-# Additional stuff for the LaTeX preamble.
-'preamble': '\\makeatletter\n\\renewenvironment{notice}[2]{\n\\begin{itshape}}'+ \
-            '{\\end{itshape}}\n' + \
-            '\\makeatother\n\n',
+    'transition': '\n\n\\bigskip{}\\',
+    # Additional stuff for the LaTeX preamble.
+    # 'preamble': '\\makeatletter\n\\renewenvironment{notice}[2]{\n\\begin{itshape}}' + \
+    # '{\\end{itshape}}\n' + \
+    # '\\makeatother\n\n',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'Siren.tex', cv["PROJECT_NAME"]+' User Guide',
-   cv["PROJECT_AUTHORS"], 'manual'),
+    ('index', 'Siren.tex', cv["PROJECT_NAME"]+' User Guide',
+     cv["PROJECT_AUTHORS"], 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -244,9 +258,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', cv["PROJECT_NAME"], cv["PROJECT_NAME"]+' User Guide',
-   cv["PROJECT_AUTHORS"], cv["PROJECT_NAME"]+" "+cv["PROJECT_DESCRIPTION"], '.',
-   cv["PROJECT_DESCRIPTION"]),
+    ('index', cv["PROJECT_NAME"], cv["PROJECT_NAME"]+' User Guide',
+     cv["PROJECT_AUTHORS"], cv["PROJECT_NAME"]+" "+cv["PROJECT_DESCRIPTION"], '.',
+     cv["PROJECT_DESCRIPTION"]),
 ]
 
 # Documents to append as an appendix to all manuals.
@@ -257,4 +271,3 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
-

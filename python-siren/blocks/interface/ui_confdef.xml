@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<?xml-stylesheet type="text/xsl" href="../mine/confdef.xsl"?>
+<root>
+  <info>Interface preferences for the Siren redescription mining tool.</info>
+</root>

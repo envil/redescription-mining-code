@@ -160,7 +160,7 @@ html_sidebars = {
 #html_domain_indices = True
 
 # If false, no index is generated.
-html_use_index = False
+html_use_index = True
 
 # If true, the index is split into individual pages for each letter.
 #html_split_index = False
@@ -197,9 +197,9 @@ latex_elements = {
 
 'transition' : '\n\n\\bigskip{}\\',
 # Additional stuff for the LaTeX preamble.
-'preamble': '\\makeatletter\n\\renewenvironment{notice}[2]{\n\\begin{itshape}}'+ \
-            '{\\end{itshape}}\n' + \
-            '\\makeatother\n\n',
+#'preamble': '\\makeatletter\n\\renewenvironment{notice}[2]{\n\\begin{itshape}}'+ \
+#            '{\\end{itshape}}\n' + \
+#            '\\makeatother\n\n',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

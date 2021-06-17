@@ -2,24 +2,22 @@
 
 import wx
 import multiprocessing
-#import wx.richtext
-#from wx.lib import wordwrap
-#from wx.prop import basetableworker
-# import warnings
-# warnings.simplefilter("ignore")
-#import matplotlib.pyplot as plt
-
-import pdb
-#from clired import *
-
-from siren.interface.classSiren import Siren
-from siren.interface.classGridTable import CustRenderer
-from siren.clired.classPreferencesManager import PreferencesReader, getPM
-from siren.clired.classPackage import IOTools
-
 import time
 
+# import warnings
+# warnings.simplefilter("ignore")
+
+from blocks.mine.classData import Data
+from blocks.interface.classSiren import Siren
+from blocks.interface.classGridTable import CustRenderer
+from blocks.mine.classPreferencesManager import getPreferencesReader
+from blocks.mine.classPackage import IOTools
+
+import pdb
+
 ## MAIN APP CLASS ###
+
+
 class SirenApp(wx.App):
     def __init__(self, *args, **kwargs):
         wx.App.__init__(self, *args, **kwargs)
@@ -31,70 +29,57 @@ class SirenApp(wx.App):
         self.SetAppName("Siren")
         self.frame = Siren()
         series = ""
-        import sys, os, platform, re
+        import sys
+        import os
+        import platform
+        import re
+
+        params = {}
         if len(sys.argv) > 1 and platform.system() != 'Darwin':
             # On OSX, MacOpenFile() gets called with sys.argv's contents, so don't load anything here
-            # DEBUG
-            #print "Loading file", sys.argv[-1]
-            pos_fn = 1
-            while pos_fn > 0 and pos_fn < len(sys.argv):
-                filename = sys.argv[pos_fn]
-                (p, ext) = os.path.splitext(filename)
-                if ext == '.siren':
-                    try:
-                        self.frame.dw.openPackage(filename)
-                    except Exception:
-                        pass
-                    pos_fn += 1
-                elif re.search("queries", filename) and ext in ['.csv', '.txt', '.queries']:
-                    self.frame.dw.loadRedescriptionsFromFile(filename)
-                    pos_fn += 1
-                elif ext in [".conf", ".xml"]:
-                    self.frame.dw.importPreferencesFromFile(filename)
-                    pm = getPM()
-                    #### in/out params are not read and accounted for in Siren, load separately
-                    default_params = PreferencesReader(pm).getParametersDict()
-                    params = PreferencesReader(pm).getParametersDict(filename)
-                    src_folder = os.path.dirname(os.path.abspath(filename))
-                    default_filenames = IOTools.prepareFilenames(default_params, src_folder=src_folder)
-                    filenames = IOTools.prepareFilenames(params, src_folder=src_folder)
-                    ### First check whether there are non-default filenames in params, then reread params with defaults
-                    if filenames["style_data"] == "csv" and filenames["RHS_data"] != "" and filenames["RHS_data"] != "" and \
-                       filenames["RHS_data"] != default_filenames["RHS_data"] and \
-                       filenames["LHS_data"] != default_filenames["LHS_data"]:
-                        self.frame.dw.importDataFromCSVFiles([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"])
-                        self.frame.dw.applyVarsMask(params)
-                        if filenames["queries"] != "-" and os.path.isfile(filenames["queries"]):
-                            self.frame.dw.loadRedescriptionsFromFile(filenames["queries"])
-                        
-                    pos_fn += 1
-                elif ext == '.csv':
-                    # If the first file is .csv, check if we've got two files and use them as left and right files
-                    series = filename.split("_")[-1].split(".")[0]
-                    LHfile = filename
-                    RHfile = filename
-                    if len(sys.argv) > pos_fn+1:
-                        (f, ext2) = os.path.splitext(sys.argv[pos_fn+1])
-                        if ext2 == '.csv':
-                            pos_fn += 1
-                            RHfile = sys.argv[pos_fn]                            
+            # print("Loading file", sys.argv[-1])
+            preferences_reader = self.frame.dw.getPreferencesReader()
+            params, leftover_args, preferences_mod = preferences_reader.getPreferences(sys.argv)
+            if "src_folder" in params.get("filename", {}):
+                src_folder = params["filename"]["src_folder"]
+            else:
+                src_folder = os.path.dirname(os.path.abspath(__file__))
 
-                    self.frame.dw.importDataFromCSVFiles([LHfile, RHfile]+IOTools.getDataAddInfo())
-                    pos_fn += 1
-                else:
-                    pos_fn *= -1
-                    #sys.stderr.write('Unknown data type "'+ext+'" for file '+filename)
+            if "pack_file" in params.get("filename", {}):
+                pack_filename = params["filename"]["pack_file"][0]
+                try:
+                    self.frame.dw.openPackage(pack_filename)
+                except Exception:
+                    del params["filename"]["pack_file"]
+            self.frame.dw.updatePreferences(params)
+
+            filenames = IOTools.prepareFilenames(params, src_folder=src_folder)
+            if not "pack_file" in params.get("filename", {}) and os.path.exists(filenames["LHS_data"]) and os.path.exists(filenames["RHS_data"]):
+                data = Data([filenames["LHS_data"], filenames["RHS_data"]]+filenames["add_info"], filenames["style_data"])
+                data.loadExtensions(ext_keys=params.get("activated_extensions", []), filenames=filenames.get("extensions"), params=params)
+                self.frame.dw.setData(data)
+                self.frame.dw.applyVarsMask(params)
+                self.frame.dw._isChanged = True
+                self.frame.dw._isFromPackage = False
+
+            if self.frame.dw.getData() is not None:
+                for filename in filenames["all_queries"]:
+                    if filename != "-" and os.path.isfile(filename):
+                        self.frame.dw.loadRedescriptionsFromFile(filename)
+
         self.frame.refresh()
-        
-        if len(sys.argv) > 2 and sys.argv[-1] == "debug":
+
+        if params.get("debug", False):
+            # self.frame.OnPreferencesDialog(None)
             # self.frame.OnExtensionsDialog(None)
+            self.frame.OnFoldsDialog(None)
+            # self.frame.OnConnectionDialog(None)
             # print "No debug action..."
-            # DEBUG
-            # print "Loading file", sys.argv[-1]
+            # print("Loading file", sys.argv[-1])
             # self.frame.expand()
 
             # self.frame.OnRunTest(None)
-            
+
             # ### SPLITS
             # self.frame.dw.getData().extractFolds(1, 12)
             # splits_info = self.frame.dw.getData().getFoldsInfo()
@@ -106,7 +91,6 @@ class SirenApp(wx.App):
             # self.frame.dw.getData().assignLT(ids["learn"], ids["test"])
             # self.frame.recomputeAll()
 
-
             # # fmts = ["tiff"] #, "png"] #, "eps"]
             # fmts = ["eps"] #, "eps"]
             # fmts = ["svg", "eps"]
@@ -114,7 +98,7 @@ class SirenApp(wx.App):
             # # tab, fname, dims = ("reds", "/home/egalbrun/R%d_map_2K-d100.", (1920, 1190)) ### MAP RED
             # # tab, fname, dims = ("vars", "/home/egalbrun/V%d-%d_map_2K-d100.", (2350, 1190)) ### MAP VAR
             # folder = "/home/egalbrun/figs"
-            # if len(series) > 0:                
+            # if len(series) > 0:
             #     folder += "/"+series
             # tab, fname, dims = ("reds", folder+"/R%d_%s_2K-d100.", (1920, 1190)) ### MAP RED
             # #tab, fname, dims = ("vars", folder+"/V%d-%d_map_2K-d100.", (2500, 1190)) ### MAP VAR
@@ -136,13 +120,13 @@ class SirenApp(wx.App):
             # iid = (1, 33)
             # # self.frame.viewOpen(self.frame.getData().getItem(iid), iid=iid, viewT="AXE_entities")
             # self.frame.viewOpen(self.frame.getData().getItem(iid), iid=iid, viewT="MAP")
-            
+
             # iids = self.frame.getData().getIidsList((0,0))
             # what = [(iid, self.frame.getData().getItem(iid)) for iid in iids]
-            iids = self.frame.getRedLists().getIidsList(3)
-            what = [(iid, self.frame.getRedLists().getItem(iid)) for iid in iids]
-            self.frame.viewOpen(what, iid=-1, viewT="LRNG") 
-            
+            # # iids = self.frame.getRedLists().getIidsList(3)
+            # # what = [(iid, self.frame.getRedLists().getItem(iid)) for iid in iids]
+            # # self.frame.viewOpen(what, iid=-1, viewT="LRNG")
+
             # tab ="vars"
             # self.frame.dw.getData().getMatrix()
             # self.frame.dw.getData().selected_rows = set(range(400))
@@ -156,7 +140,7 @@ class SirenApp(wx.App):
     def BringWindowToFront(self):
         try:
             pass
-            #self.frame.toolFrame.Raise()
+            # self.frame.toolFrame.Raise()
         except:
             pass
 
@@ -168,7 +152,8 @@ class SirenApp(wx.App):
 
     def MacOpenFiles(self, filenames):
         """Called for files dropped on dock icon, or opened via Finder's context menu"""
-        import sys, os.path
+        import sys
+        import os.path
         filename = filenames[0]
         # When start from command line, this gets called with the script file's name
         if filename != sys.argv[0]:
@@ -183,7 +168,7 @@ class SirenApp(wx.App):
                 self.frame.dw.importDataFromCSVFiles([filename, filename]+IOTools.getDataAddInfo())
                 self.frame.refresh()
             else:
-                 wx.MessageDialog(self.frame.toolFrame, 'Unknown file type "'+ext+'" in file '+filename, style=wx.OK, caption='Unknown file type').ShowModal()
+                wx.MessageDialog(self.frame.toolFrame, 'Unknown file type "'+ext+'" in file '+filename, style=wx.OK, caption='Unknown file type').ShowModal()
 
     def MacReopenApp(self):
         """Called when the doc icon is clicked, and ???"""
@@ -195,21 +180,23 @@ class SirenApp(wx.App):
     def MacPrintFile(self, filepath):
         pass
 
+
 def siren_run():
     app = SirenApp(False)
 
-    CustRenderer.BACKGROUND_SELECTED = wx.SystemSettings.GetColour( wx.SYS_COLOUR_HIGHLIGHT )
-    CustRenderer.TEXT_SELECTED = wx.SystemSettings.GetColour( wx.SYS_COLOUR_HIGHLIGHTTEXT )
-    CustRenderer.BACKGROUND = wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOW  )
-    CustRenderer.TEXT = wx.SystemSettings.GetColour( wx.SYS_COLOUR_WINDOWTEXT  )
+    CustRenderer.BACKGROUND_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHT)
+    CustRenderer.TEXT_SELECTED = wx.SystemSettings.GetColour(wx.SYS_COLOUR_HIGHLIGHTTEXT)
+    CustRenderer.BACKGROUND = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOW)
+    CustRenderer.TEXT = wx.SystemSettings.GetColour(wx.SYS_COLOUR_WINDOWTEXT)
 
     #app.frame = Siren()
     app.MainLoop()
+
 
 def main():
     multiprocessing.freeze_support()
     siren_run()
 
+
 if __name__ == '__main__':
     main()
-

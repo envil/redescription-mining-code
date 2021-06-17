@@ -1,0 +1,43 @@
+.. _preferences:
+
+**************
+Parameters
+**************
+
+.. note::
+   Siren allows to tune various parameters via an interface menu :menuselection:`Edit --> Preferences`.
+
+   Non-default parameters can be stored in a preferences file, e.g. via :menuselection:`Export --> Export preferences`.
+   
+   Parameters are listed below by their label and identifier, as used respectively in the interface and in preference files, with a short explanation of the parameter, type, default value and indication of file where the parameter is defined.
+ 
+
+The parameters that can be set through the preference interface can be mainly divided into two categories, **mining parameters**, that pertain to the mining algorithm, and **visualization parameters**, that pertain to the interactive visualizations, each split over several tabs.
+   
+.. _mining_parameters:
+
+Mining parameters
+=========================
+
+Mining parameters are specified `here <../_static/miner_confdef.xml>`_ and can be set through the interface.
+
+Quite many parameters are available for tuning, but in general only a few of them need to be adjusted.
+In particular, the parameters setting threshold values on the support of the queries, on the accuracy of the returned redescriptions, as well as on the type of queries, are the most important ones.
+
+.. _interface_parameters:
+
+Visualization parameters
+=========================
+
+Visualization parameters are specified `here <../_static/views_confdef.xml>`_  and can be set through the interface.
+For instance, they allows to modify the appearance of the maps, choose the colors of the different support subsets, etc.
+
+.. _other_parameters:
+
+Other parameters
+=========================
+
+It is possible to adjust the parameters through the interface then export them to a file.
+In particular, a template can be generated and exported which can be used to run the *ReReMi* mining algorithm from the command line, after filling in input/output parameters, which are specified `here. <../_static/inout_confdef.xml>`_ 
+
+Further parameters pertain to randomization, cross-fold tests, server parameters, etc.

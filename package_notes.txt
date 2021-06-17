@@ -1,6 +1,7 @@
 Packaging
 =========
 
+Restore from debug settings: time logging ("def get_datetime_now()" in clired/toolLog.py), initial candidates exploration cids ("WARNING DANGEROUS few pairs for DEBUG" in clired/classMiner.py), force greedy with missing values ("CHARBON_MISS_FORCE =" in clired/classMiner.py) 
 First, remember to edit setup.py and Manifest.in to include new files and siren/common_details.py and CHANGELOG to update version number and latest changes.
 Also update help pages accordingly.
 Run prepare_pck_files.py (src|deb|win) to generate info files.
@@ -43,7 +44,8 @@ deactivate
 pip install "wxPython>= 4.1.0" "matplotlib >= 2.1.0" "cartopy >= 0.14"
 pip install --index-url https://test.pypi.org/simple/ python-siren
 
-
+# alternatively, use pipenv or conda
+pipenv # /home/egalbrun/.local/share/virtualenvs/
 conda install -c conda-forge cartopy
 
 ------------------------------------------------
