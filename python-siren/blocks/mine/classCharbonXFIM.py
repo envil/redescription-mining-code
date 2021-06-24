@@ -292,13 +292,13 @@ class CharbonXFIM(CharbonXaust):
         tracts = [[] for i in range(data.nbRows())]
         initial_candidates_map = [{}, {}]
         for i, candidate in enumerate(initial_candidates):
-            side = 1 if candidate[0] is None else 0
-            column_id = candidate[side].colId()
+            side = candidate.getSide()
+            column_id = candidate.getCid()
             if column_id not in initial_candidates_map[side]:
                 initial_candidates_map[side][column_id] = []
             k = (side, column_id, len(initial_candidates_map[side][column_id]))
             initial_candidates_map[side][column_id].append(i)
-            for row_id in data.supp(side, candidate[side]):
+            for row_id in data.supp(side, candidate.getLit()):
                 tracts[row_id].append(k)
         tracts = [frozenset(t) for t in tracts]
 
@@ -318,8 +318,8 @@ class CharbonXFIM(CharbonXaust):
         cands = []
         for qs in queries:
             #  could be to recover the original variables
-            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]][0] for q in qs[0]]
-            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]][1] for q in qs[1]]
+            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]].getLit() for q in qs[0]]
+            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]].getLit() for q in qs[1]]
             r = Redescription.fromQueriesPair([Query(False, literals_s0), Query(False, literals_s1)], data, copyQ=False)
             cands.append(r)
         return cands
@@ -337,12 +337,12 @@ class CharbonXFIM(CharbonXaust):
         initial_candidates = [None, None]
         initial_candidates_map = [None, None]
         for side in [0, 1]:
-            initial_candidates[side] = [candidate[side] for candidate in initial_candidates_full
-                                        if candidate[side] is not None]
+            initial_candidates[side] = [candidate.getLit() for candidate in initial_candidates_full
+                                        if candidate.getSide == side]
             tracts = [[] for i in range(data.nbRows())]
             initial_candidates_map[side] = defaultdict(list)
             for i, candidate in enumerate(initial_candidates[side]):
-                candidate_supp = data.supp(side, candidate)
+                candidate_supp = data.supp(side, candidate.getLit())
                 if len(candidate_supp) < min_supp:
                     continue
                 column_id = candidate.colId()
