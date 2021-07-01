@@ -309,11 +309,11 @@ class CharbonXFIM(CharbonXaust):
         initial_candidates_map = [None, None]
         for side in [0, 1]:
             initial_candidates[side] = [candidate.getLit() for candidate in initial_candidates_full
-                                        if candidate.getSide == side]
+                                        if candidate.getSide() == side]
             tracts = [[] for i in range(data.nbRows())]
             initial_candidates_map[side] = defaultdict(list)
             for i, candidate in enumerate(initial_candidates[side]):
-                candidate_supp = data.supp(side, candidate.getLit())
+                candidate_supp = data.supp(side, candidate)
                 if len(candidate_supp) < min_supp:
                     continue
                 column_id = candidate.colId()
@@ -341,13 +341,13 @@ class CharbonXFIM(CharbonXaust):
         initial_candidates_map = [{}, {}]
         tid_lists = TIDList()
         for i, candidate in enumerate(initial_candidates):
-            side = 1 if candidate[0] is None else 0
-            column_id = candidate[side].colId()
+            side = candidate.getSide()
+            column_id = candidate.getCid()
             if column_id not in initial_candidates_map[side]:
                 initial_candidates_map[side][column_id] = []
             k = (side, column_id, len(initial_candidates_map[side][column_id]))
             initial_candidates_map[side][column_id].append(i)
-            supps = data.supp(side, candidate[side])
+            supps = data.supp(side, candidate.getLit())
             tid_lists.set_data(side, k, supps)
             for row_id in supps:
                 tracts[row_id].append(k)
@@ -365,13 +365,11 @@ class CharbonXFIM(CharbonXaust):
         r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
 
-        with open('./tests/data/queries_v3.pickle', 'wb') as f:
-            pickle.dump(queries, f)
         lits = []
         for qs in queries:
             #  could be to recover the original variables
-            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]][0] for q in qs[0]]
-            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]][1] for q in qs[1]]
+            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
+            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]] for q in qs[1]]
             r = Redescription.fromQueriesPair([Query(False, literals_s0), Query(False, literals_s1)], data, copyQ=False)
             lits.append(r)
         return lits
