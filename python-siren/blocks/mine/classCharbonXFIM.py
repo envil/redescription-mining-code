@@ -287,42 +287,13 @@ class CharbonXFIM(CharbonXaust):
         return False
 
     def computeExpansions(self, data, initial_candidates):
-        lits = self.computeExpansionsMineAndPair(data, initial_candidates)
-        # lits = self.computeExpansionsMineAndSplit(data, initial_candidates)
-        tracts = [[] for i in range(data.nbRows())]
-        initial_candidates_map = [{}, {}]
-        for i, candidate in enumerate(initial_candidates):
-            side = candidate.getSide()
-            column_id = candidate.getCid()
-            if column_id not in initial_candidates_map[side]:
-                initial_candidates_map[side][column_id] = []
-            k = (side, column_id, len(initial_candidates_map[side][column_id]))
-            initial_candidates_map[side][column_id].append(i)
-            for row_id in data.supp(side, candidate.getLit()):
-                tracts[row_id].append(k)
-        tracts = [frozenset(t) for t in tracts]
-
-        # target='s', supp=2, zmin=1, zmax=maxsize, out=0
-        # maxx = zmax+1 if zmax < maxsize and target in 'cm' else zmax
-        zmin = 1
-        zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
-        min_supp = self.constraints.getCstr("min_itm_in")
-
-        candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
-                                                                                 "min_itm_in", "min_itm_out",
-                                                                                 "min_fin_acc"]])
-
-        candidate_store = CandStore(candidate_store_setts)
-        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
-        queries = candidate_store.getQueries()
-        cands = []
-        for qs in queries:
-            #  could be to recover the original variables
-            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]].getLit() for q in qs[0]]
-            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]].getLit() for q in qs[1]]
-            r = Redescription.fromQueriesPair([Query(False, literals_s0), Query(False, literals_s1)], data, copyQ=False)
-            cands.append(r)
-        return cands
+        fim_variant = self.constraints.getCstr("fim_variant")
+        if fim_variant == "mas":
+            return self.computeExpansionsMineAndSplit(data, initial_candidates)
+        elif fim_variant == "map":
+            return self.computeExpansionsMineAndPair(data, initial_candidates)
+        else:
+            raise Exception(f"Invalid fim_variant value: {fim_variant}")
 
     def computeExpansionsMineAndPair(self, data, initial_candidates_full):
         zmin = 1
