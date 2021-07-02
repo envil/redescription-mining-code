@@ -31,7 +31,7 @@
         <value_type>text</value_type>
         <legend>Variant of the algorithm based on Frequent Itemset Mining, Mine And Split or Mine And Pair.</legend>
         <default>
-            <value>mas</value>
+            <value>0</value>
         </default>
         <options>
             <value>mas</value>

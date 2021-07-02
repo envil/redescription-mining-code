@@ -297,7 +297,6 @@ class CharbonXFIM(CharbonXaust):
 
     def computeExpansionsMineAndPair(self, data, initial_candidates_full):
         zmin = 1
-        zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
         min_supp = self.constraints.getCstr("min_itm_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
@@ -308,9 +307,10 @@ class CharbonXFIM(CharbonXaust):
         initial_candidates = [None, None]
         initial_candidates_map = [None, None]
         for side in [0, 1]:
+            zmax = self.constraints.getCstr(f"max_var_s{side}")
             initial_candidates[side] = [candidate.getLit() for candidate in initial_candidates_full
                                         if candidate.getSide() == side]
-            tracts = [[] for i in range(data.nbRows())]
+            tracts = [[] for _ in range(data.nbRows())]
             initial_candidates_map[side] = defaultdict(list)
             for i, candidate in enumerate(initial_candidates[side]):
                 candidate_supp = data.supp(side, candidate)
@@ -337,7 +337,7 @@ class CharbonXFIM(CharbonXaust):
         return lits
 
     def computeExpansionsMineAndSplit(self, data, initial_candidates):
-        tracts = [[] for i in range(data.nbRows())]
+        tracts = [[] for _ in range(data.nbRows())]
         initial_candidates_map = [{}, {}]
         tid_lists = TIDList()
         for i, candidate in enumerate(initial_candidates):
