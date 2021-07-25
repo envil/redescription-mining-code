@@ -36,9 +36,25 @@ pexs    perfect extensions of the base item set (list of items)
 supp    (absolute) support of the item set to report
 setts    static recursion/output setts as a list
         [ target, supp, zmin, zmax, maxx, count [, out] ]"""
+    def check_item_size(n, zmin, zmax):
+        return n < zmin or n > zmax
+
+    def is_invalid_itemset_size(iset, setts):
+        [zmin, zmax] = setts[2:4]
+        if len(zmax) == 1:
+            n = len(iset) # check the item set size
+            return check_item_size(n, setts[2][0], setts[3][0])
+        elif len(zmax) == 2:
+            result = True
+            for side, (sided_zmin, sided_zmax) in enumerate(zip(zmin, zmax)):
+                sided_iset = [item for item in iset if item[0] == side]
+                result = result & check_item_size(len(sided_iset), sided_zmin, sided_zmax)
+            return result
+        else:
+            return False
+
     if not pexs:  # if no perfect extensions (left)
-        n = len(iset)  # check the item set size
-        if (n < setts[2]) or (n > setts[3]):
+        if is_invalid_itemset_size(iset, setts):
             return
         store_handle((tuple(iset), supp))
     else:  # if perfect extensions to process
@@ -118,6 +134,15 @@ setts    static recursion/output setts as a list
 
 
 def my_recurse(tadb, iset, pexs, setts, store_handle):
+    """Recursive part of the eclat algorithm.
+tadb    (conditional) transaction settsbase, in vertical representation,
+        as a list of item/transaction information, one per (last) item
+        (triples of support, item and transaction set)
+iset    item set (prefix of conditional transaction settsbase)
+pexs    set of perfect extensions (parent equivalent items)
+elim    set of eliminated items (for closed/maximal check)
+setts    static recursion/output setts as a list
+        [ target, supp, zmin, zmax, maxx, count [, out] ]"""
     tadb.sort()  # sort items by (conditional) support
     for k, (sum_transactions, item, transactions) in enumerate(tadb):  # traverse the items/item sets
         proj = []
@@ -324,7 +349,7 @@ class CharbonXFIM(CharbonXaust):
                     tracts[row_id].append(k)
 
             tracts = [frozenset(t) for t in tracts]
-            r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+            r = mod_eclat(tracts, ['s', min_supp, [zmin], [zmax], zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
         lits = []
         for qs in queries:
@@ -336,13 +361,15 @@ class CharbonXFIM(CharbonXaust):
             lits.append(r)
         return lits
 
-    def computeExpansionsMineAndSplit(self, data, initial_candidates):
+    def computeExpansionsMineAndSplit(self, data, initial_candidates_full):
         tracts = [[] for _ in range(data.nbRows())]
+        initial_candidates = [[], []]
         initial_candidates_map = [{}, {}]
         tid_lists = TIDList()
-        for i, candidate in enumerate(initial_candidates):
+        for i, candidate in enumerate(initial_candidates_full):
             side = candidate.getSide()
             column_id = candidate.getCid()
+            initial_candidates[side].append(candidate.getLit())
             if column_id not in initial_candidates_map[side]:
                 initial_candidates_map[side][column_id] = []
             k = (side, column_id, len(initial_candidates_map[side][column_id]))
@@ -353,8 +380,9 @@ class CharbonXFIM(CharbonXaust):
                 tracts[row_id].append(k)
         tracts = [frozenset(t) for t in tracts]
 
-        zmin = 1
-        zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
+        zmin = (1, 1)
+        zmax = (self.constraints.getCstr("max_var_s0"), self.constraints.getCstr("max_var_s1"))
+        maxx = sum(zmax) + 1
         min_supp = self.constraints.getCstr("min_itm_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
@@ -362,14 +390,14 @@ class CharbonXFIM(CharbonXaust):
                                                                                  "min_fin_acc"]])
 
         candidate_store = CandStoreMineAndSplit(candidate_store_setts)
-        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+        r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, maxx], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
 
         lits = []
         for qs in queries:
             #  could be to recover the original variables
-            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
-            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]] for q in qs[1]]
+            literals_s0 = [initial_candidates[q[0]][initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
+            literals_s1 = [initial_candidates[q[0]][initial_candidates_map[1][q[1]][q[2]]] for q in qs[1]]
             r = Redescription.fromQueriesPair([Query(False, literals_s0), Query(False, literals_s1)], data, copyQ=False)
             lits.append(r)
         return lits
