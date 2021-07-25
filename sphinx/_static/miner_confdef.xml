@@ -23,22 +23,6 @@
 	<legend>Maximum number of variables per RHS query.</legend>
 	<length>2</length>
 	<default><value>4</value></default>
-      </parameter>
-    <parameter>
-        <name>fim_variant</name>
-        <label>FIM variant</label>
-        <parameter_type>single_options</parameter_type>
-        <value_type>text</value_type>
-        <legend>Variant of the algorithm based on Frequent Itemset Mining, Mine And Split or Mine And Pair.</legend>
-        <default>
-            <value>0</value>
-        </default>
-        <options>
-            <value>mas</value>
-            <value>map</value>
-        </options>
-    </parameter>
-      <parameter>
 	<name>lhs_neg_query_1</name>
 	<label>LHS Literals Bool</label>
 	<parameter_type>multiple_options</parameter_type>
