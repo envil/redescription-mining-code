@@ -36,30 +36,47 @@ pexs    perfect extensions of the base item set (list of items)
 supp    (absolute) support of the item set to report
 setts    static recursion/output setts as a list
         [ target, supp, zmin, zmax, maxx, count [, out] ]"""
+    if not pexs:  # if no perfect extensions (left)
+        n = len(iset)  # check the item set size
+        if (n < setts[2]) or (n > setts[3]):
+            return
+        store_handle((tuple(iset), supp))
+    else:  # if perfect extensions to process
+        report(iset + [pexs[0]], pexs[1:], supp, setts, store_handle)
+        report(iset, pexs[1:], supp, setts, store_handle)
+
+
+def my_report(iset, pexs, supp, setts, store_handle):
+    """Recursively report item sets with the same support.
+iset    base item set to report (list of items)
+pexs    perfect extensions of the base item set (list of items)
+supp    (absolute) support of the item set to report
+setts    static recursion/output setts as a list
+        [ target, supp, zmin, zmax, maxx, count [, out] ]"""
     def check_item_size(n, zmin, zmax):
         return n < zmin or n > zmax
 
-    def is_invalid_itemset_size(iset, setts):
-        [zmin, zmax] = setts[2:4]
+    def is_invalid_item_set_size(item_set, settings):
+        [zmin, zmax] = settings[2:4]
         if len(zmax) == 1:
-            n = len(iset) # check the item set size
-            return check_item_size(n, setts[2][0], setts[3][0])
+            n = len(item_set)  # check the item set size
+            return check_item_size(n, settings[2][0], settings[3][0])
         elif len(zmax) == 2:
             result = True
             for side, (sided_zmin, sided_zmax) in enumerate(zip(zmin, zmax)):
-                sided_iset = [item for item in iset if item[0] == side]
+                sided_iset = [item for item in item_set if item[0] == side]
                 result = result & check_item_size(len(sided_iset), sided_zmin, sided_zmax)
             return result
         else:
             return False
 
     if not pexs:  # if no perfect extensions (left)
-        if is_invalid_itemset_size(iset, setts):
+        if is_invalid_item_set_size(iset, setts):
             return
         store_handle((tuple(iset), supp))
     else:  # if perfect extensions to process
-        report(iset + [pexs[0]], pexs[1:], supp, setts, store_handle)
-        report(iset, pexs[1:], supp, setts, store_handle)
+        my_report(iset + [pexs[0]], pexs[1:], supp, setts, store_handle)
+        my_report(iset, pexs[1:], supp, setts, store_handle)
 
 
 # -----------------------------------------------------------------------
@@ -158,7 +175,7 @@ setts    static recursion/output setts as a list
         xset = iset + [item]  # add the current item to the set and
         if proj and (len(xset) < setts[4]):
             my_recurse(proj, xset, xpxs, setts, store_handle)
-        report(xset, xpxs, sum_transactions, setts, store_handle)
+        my_report(xset, xpxs, sum_transactions, setts, store_handle)
 
 # -----------------------------------------------------------------------
 
@@ -363,13 +380,13 @@ class CharbonXFIM(CharbonXaust):
 
     def computeExpansionsMineAndSplit(self, data, initial_candidates_full):
         tracts = [[] for _ in range(data.nbRows())]
-        initial_candidates = [[], []]
+        initial_candidates = []
         initial_candidates_map = [{}, {}]
         tid_lists = TIDList()
         for i, candidate in enumerate(initial_candidates_full):
             side = candidate.getSide()
             column_id = candidate.getCid()
-            initial_candidates[side].append(candidate.getLit())
+            initial_candidates.append(candidate.getLit())
             if column_id not in initial_candidates_map[side]:
                 initial_candidates_map[side][column_id] = []
             k = (side, column_id, len(initial_candidates_map[side][column_id]))
@@ -396,8 +413,8 @@ class CharbonXFIM(CharbonXaust):
         lits = []
         for qs in queries:
             #  could be to recover the original variables
-            literals_s0 = [initial_candidates[q[0]][initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
-            literals_s1 = [initial_candidates[q[0]][initial_candidates_map[1][q[1]][q[2]]] for q in qs[1]]
+            literals_s0 = [initial_candidates[initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
+            literals_s1 = [initial_candidates[initial_candidates_map[1][q[1]][q[2]]] for q in qs[1]]
             r = Redescription.fromQueriesPair([Query(False, literals_s0), Query(False, literals_s1)], data, copyQ=False)
             lits.append(r)
         return lits
