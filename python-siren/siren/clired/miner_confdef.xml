@@ -23,6 +23,20 @@
           <value>fim</value>
         </options>
       </parameter>
+      <parameter>
+          <name>fim_variant</name>
+          <label>FIM variant</label>
+          <parameter_type>single_options</parameter_type>
+          <value_type>text</value_type>
+          <legend>Variant of the algorithm based on Frequent Itemset Mining, Mine And Split or Mine And Pair.</legend>
+          <default>
+              <value>0</value>
+          </default>
+          <options>
+              <value>mas</value>
+              <value>map</value>
+          </options>
+      </parameter>
     </section>
     <section>
       <name>Queries</name>

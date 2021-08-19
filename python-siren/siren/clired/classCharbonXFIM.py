@@ -15,6 +15,7 @@ except ModuleNotFoundError:
     from .classRedescription import Redescription
 
 import pdb
+import time
 
 
 # -----------------------------------------------------------------------
@@ -227,7 +228,9 @@ class CandStoreMineAndPair:
 
     def getQueries(self, tid_lists: TIDList) -> list:
         query_store = []
+        start_time = time.time()
         for lhs_cand, s0 in self.store[0].items():
+            # print(lhs_cand, time.time() - start_time)
             for rhs_cand, s1 in self.store[1].items():
                 s0 = tid_lists.get_supports(lhs_cand)
                 s1 = tid_lists.get_supports(rhs_cand)
@@ -287,8 +290,9 @@ class CharbonXFIM(CharbonXaust):
         return False
 
     def computeExpansions(self, data, initial_candidates):
-        lits = self.computeExpansionsMineAndPair(data, initial_candidates)
-        # lits = self.computeExpansionsMineAndSplit(data, initial_candidates)
+        # lits = self.computeExpansionsMineAndPair(data, initial_candidates)
+        lits = self.computeExpansionsMineAndSplit(data, initial_candidates)
+        return lits
         tracts = [[] for i in range(data.nbRows())]
         initial_candidates_map = [{}, {}]
         for i, candidate in enumerate(initial_candidates):
@@ -325,6 +329,7 @@ class CharbonXFIM(CharbonXaust):
         return cands
 
     def computeExpansionsMineAndPair(self, data, initial_candidates_full):
+        start_time = time.time()
         zmin = 1
         zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
         min_supp = self.constraints.getCstr("min_itm_in")
@@ -354,7 +359,11 @@ class CharbonXFIM(CharbonXaust):
 
             tracts = [frozenset(t) for t in tracts]
             r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+            after_mining_time = time.time()
+            print(f'After mining {after_mining_time - start_time}')
         queries = candidate_store.getQueries(tid_lists)
+        after_query_time = time.time()
+        print(f'After query {after_query_time - after_mining_time}')
         lits = []
         for qs in queries:
             lits_s0 = [initial_candidates[q[0]][initial_candidates_map[0][q[1]][q[2]]] for q in qs[0]]
@@ -366,6 +375,7 @@ class CharbonXFIM(CharbonXaust):
         return lits
 
     def computeExpansionsMineAndSplit(self, data, initial_candidates):
+        start_time = time.time()
         tracts = [[] for i in range(data.nbRows())]
         initial_candidates_map = [{}, {}]
         tid_lists = TIDList()
@@ -392,10 +402,12 @@ class CharbonXFIM(CharbonXaust):
 
         candidate_store = CandStoreMineAndSplit(candidate_store_setts)
         r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
+        after_mining_time = time.time()
+        print(f'After mining {after_mining_time - start_time}')
         queries = candidate_store.getQueries(tid_lists)
+        after_query_time = time.time()
+        print(f'After query {after_query_time - after_mining_time}')
 
-        with open('./tests/data/queries_v3.pickle', 'wb') as f:
-            pickle.dump(queries, f)
         lits = []
         for qs in queries:
             #  could be to recover the original variables
