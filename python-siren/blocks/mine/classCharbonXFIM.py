@@ -273,12 +273,8 @@ class CandStoreMineAndPair:
             for rhs_cand, s1 in self.store[1].items():
                 s0 = tid_lists.get_supports(lhs_cand)
                 s1 = tid_lists.get_supports(rhs_cand)
-                if len(s0) == 0 or len(s1) == 0 or \
-                    ("min_itm_in" in self.setts and (len(s0) <= self.setts["min_itm_in"] or len(s1) <= self.setts["min_itm_in"])):
-                    continue
+
                 union_supports = s0 | s1
-                if len(union_supports) == 0:
-                    continue
                 intersection_supports = s0 & s1
                 accuracy = len(intersection_supports)/len(union_supports)
 
@@ -305,20 +301,14 @@ class CandStoreMineAndSplit:
         for cand, _ in self.store.items():
             q0 = tuple([c for c in cand if c[0] == 0])
             q1 = tuple([c for c in cand if c[0] == 1])
-            if len(q0) > 0 and len(q1) > 0:
-                s0 = tid_lists.get_supports(q0)
-                s1 = tid_lists.get_supports(q1)
-                if len(s0) == 0 or len(s1) == 0 or \
-                    ("min_itm_in" in self.setts and (len(s0) <= self.setts["min_itm_in"] or len(s1) <= self.setts["min_itm_in"])):
-                    continue
-                union_supports = s0 | s1
-                if len(union_supports) == 0:
-                    continue
-                intersection_supports = s0 & s1
-                accuracy = len(intersection_supports)/len(union_supports)
+            s0 = tid_lists.get_supports(q0)
+            s1 = tid_lists.get_supports(q1)
+            union_supports = s0 | s1
+            intersection_supports = s0 & s1
+            accuracy = len(intersection_supports)/len(union_supports)
 
-                if ("min_fin_acc" not in self.setts or accuracy >= self.setts["min_fin_acc"]):
-                    query_store.append((q0, q1, s0, s1, accuracy))
+            if ("min_fin_acc" not in self.setts or accuracy >= self.setts["min_fin_acc"]):
+                query_store.append((q0, q1, s0, s1, accuracy))
         return query_store
 
 
