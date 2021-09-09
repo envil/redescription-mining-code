@@ -356,7 +356,7 @@ class CharbonXFIM(CharbonXaust):
                     tracts[row_id].append(k)
 
             tracts = [frozenset(t) for t in tracts]
-            r = mod_eclat(tracts, ['s', min_supp, [zmin], [zmax], zmax + 1], candidate_store.add)
+            r = mod_eclat(tracts, ['s', min_supp, zmin, zmax, zmax + 1], candidate_store.add)
         queries = candidate_store.getQueries(tid_lists)
         lits = []
         for qs in queries:
@@ -387,9 +387,9 @@ class CharbonXFIM(CharbonXaust):
                 tracts[row_id].append(k)
         tracts = [frozenset(t) for t in tracts]
 
-        zmin = (1, 1)
-        zmax = (self.constraints.getCstr("max_var_s0"), self.constraints.getCstr("max_var_s1"))
-        maxx = sum(zmax) + 1
+        zmin = 1
+        zmax = self.constraints.getCstr("max_var_s0") + self.constraints.getCstr("max_var_s1")
+        maxx = zmax + 1
         min_supp = self.constraints.getCstr("min_itm_in")
 
         candidate_store_setts = dict([(k, self.constraints.getCstr(k)) for k in ["max_var_s0", "max_var_s1",
