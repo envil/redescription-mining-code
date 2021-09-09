@@ -198,8 +198,8 @@ def mod_eclat(tracts, setts, store_handle):
     pexs = [i for s, i, t in tadb if s >= sall]
     tadb = [t for t in tadb if t[0] >= setts[1] and t[0] < sall]
 
-    # r = recurse(tadb, [], [], [], setts, store_handle)
-    r = my_recurse(tadb, [], [], setts, store_handle)
+    r = recurse(tadb, [], [], [], setts, store_handle)
+    # r = my_recurse(tadb, [], [], setts, store_handle)
     return r
 
 
